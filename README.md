@@ -11,6 +11,8 @@ A public directory of real, working automations plus an editorial blog. Every au
 
 ## Setup
 
+> Build status: Phase 1 of 8 (repo init). The application scaffold and `package.json` land in Phase 2. Until then, the commands below describe the intended setup and will not run on a fresh clone.
+
 1. Clone the repo and install dependencies:
 
    ```sh
