@@ -1,23 +1,17 @@
 import type { Metadata } from "next";
-import { NotBuilt, Sheet } from "@/components/sheet";
+import { Sheet } from "@/components/sheet";
+import { RecordView } from "@/components/admin/record-view";
 
-export async function generateMetadata(
-  props: PageProps<"/admin/automations/[id]">,
-): Promise<Metadata> {
+export async function generateMetadata(props: PageProps<"/admin/automations/[id]">): Promise<Metadata> {
   const { id } = await props.params;
   return { title: `Edit ${id}` };
 }
 
-export default async function AdminAutomation(
-  props: PageProps<"/admin/automations/[id]">,
-) {
+export default async function AdminAutomation(props: PageProps<"/admin/automations/[id]">) {
   const { id } = await props.params;
   return (
-    <Sheet number="A2" route={`/admin/automations/${id}`} title="Edit">
-      <p className="text-chrome text-ink-2">id: {id}</p>
-      <div className="mt-unit">
-        <NotBuilt phase={6} />
-      </div>
+    <Sheet number="A2" route={`/admin/automations/${id}`} title="Record">
+      <RecordView id={id} />
     </Sheet>
   );
 }

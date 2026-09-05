@@ -1,15 +1,13 @@
 import type { Metadata } from "next";
-import { Empty, NotBuilt, Sheet } from "@/components/sheet";
+import { Sheet } from "@/components/sheet";
+import { StatusList } from "@/components/admin/status-list";
 
 export const metadata: Metadata = { title: "Import" };
 
 export default function AdminImport() {
   return (
-    <Sheet number="A3" route="/admin/import" title="Import">
-      <Empty what="Raw" />
-      <div className="mt-unit">
-        <NotBuilt phase={6} />
-      </div>
+    <Sheet number="A3" route="/admin/import" title="Import" summary="Bulk-loaded records waiting to be promoted to the queue or rejected.">
+      <StatusList status="raw" />
     </Sheet>
   );
 }

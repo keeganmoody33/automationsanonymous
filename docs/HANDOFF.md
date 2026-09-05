@@ -9,13 +9,14 @@ State of the build and every decision made so far, so any session can resume wit
 | Item | State |
 | --- | --- |
 | Branch | `claude/automationsanonymous-repo-build-1lnge8` |
-| Pull request | https://github.com/keeganmoody33/automationsanonymous/pull/2 (draft, Greptile 5/5, no open threads) |
-| Phases done | 1 (repo init), 2 (app shell and design tokens) |
-| Next phase | 3 (routes stubbed) |
-| Vercel | Project `automationsanonymous` under team `lecturesfrom`, linked to this repo. No env vars set yet. |
-| Convex | Not started. Lands in Phase 4. No project created yet. |
-| Domain | `automationsanonymous.com` registered at Cloudflare. DNS not pointed yet. |
+| Pull request | https://github.com/keeganmoody33/automationsanonymous/pull/2 (Phases 1-3 plus review fixes; merge pending, see open thread 1) |
+| Phases done | 1 (repo init), 2 (app shell and design tokens), 3 (routes stubbed), 4 (Convex schema, functions, admin gate) |
+| Next phase | 5 (content layer and structured data) |
+| Vercel | Project `automationsanonymous` under team `lecturesfrom` (slug `lecturesfromog`). Production deployed from this branch via `vercel deploy --prod`. Env vars still unset, see open thread 2. |
+| Convex | Dev `strong-turtle-110`, prod `exciting-deer-586`, team `lecturesfrom`, project `automationsanonymous`. `ADMIN_SESSION_SECRET` set on dev. Prod env and first prod deploy pending, see open thread 2. |
+| Domain | `automationsanonymous.com` and `www` on Cloudflare, DNS-only CNAMEs to `cname.vercel-dns.com`, both hostnames verified on the Vercel project. Live. |
 | Landing design | Claude Design canvas, Rev C: https://claude.ai/code/artifact/cc15dfe5-8b3f-461e-b874-44fc4d179e2e |
+| QA | `scripts/ux-loop.sh [base-url]`: screenshots every route at 390 and 1280, checks HTTP status against expectation, canonical, robots (admin must be noindex), description, console errors. Exit 2 on any failed check. |
 
 ### Decisions made on top of the brief
 
@@ -28,15 +29,24 @@ State of the build and every decision made so far, so any session can resume wit
 - Logo: circle with an inscribed triangle drawn as construction geometry with dimensions. An original mark, not a copy of anyone's.
 - Loading screen: plays once per session as a client overlay. Never changes server HTML.
 - Nothing was taken from the uploaded Vite/GSAP landing page package. It stays out of the repo.
+- Admin gate lives in `src/app/admin/layout.tsx`: no session means every admin route renders the login form in place. There is no `/login` route. Token is `${expiresAtMs}.${base64url(HMAC-SHA256(ADMIN_SESSION_SECRET, expiresAtMs))}` in an httpOnly cookie scoped to `/admin`; Convex admin functions take the same token as an argument and verify it themselves (`convex/lib/adminAuth.ts`).
+- Public dynamic pages use `fetchQuery` with `export const revalidate = 300` (ISR). `/automations` reads `searchParams` and is therefore dynamic. Unknown slugs call `notFound()`. Metadata (title, description, canonical) comes from the record.
+- Stack slugs are `${a}-to-${b}`; every `-to-` split point is tried against the tools table because tool slugs may contain `-to-`.
+- Hairline token is 1px below 2dppx so grid paper and rules render on 1x displays.
+- Local Turbopack builds fail on this Mac (worker cannot bind a port); use `--webpack` locally. Vercel builds with Turbopack.
+- Two placeholder records live in the Convex dev deployment from the smoke test: automation `placeholder-smoke-test` (published) and tool `placeholder-tool`. Obviously placeholder; delete from the dashboard when real content lands.
 
 ### Open threads
 
-1. Type: A (Plex Mono Bold, current), B (Plex Sans Condensed), C (Plex Sans), D (Plex Serif). Pick one.
-2. Cursor interactions for the landing build, proposed in the canvas comment thread: live crosshair, hover-revealed dimensions, ghost cursor replaying an automation, orbitable wireframe hero, scroll-driven drawing. Say which to cut.
-3. Vercel: set `CONVEX_DEPLOY_KEY` in project env after Phase 4. Build command becomes `npx convex deploy --cmd 'npm run build'`.
-4. Convex: create the project, generate a production deploy key and a preview deploy key in the dashboard.
-5. Cloudflare DNS, both DNS-only (grey cloud): `CNAME @ cname.vercel-dns.com` and `CNAME www cname.vercel-dns.com`. Then add both hostnames in Vercel with the apex as primary.
-6. A separate "automation and anonymity showcase" brief (Cloudflare Workers, WebAssembly, edge functions) was pasted and parked. It conflicts with this repo's stack rules. Decide: separate project, a blog post here, or dropped.
+1. Merge PR #2 into `main`. `main` is still the initial commit, so a git-triggered production deploy would overwrite the live site with an empty tree until this lands. Production is currently deployed from the branch via CLI.
+2. Secrets the operator must set (the agent is blocked from writing secrets to external services). Values are in `.env.local`:
+   - Vercel production: `NEXT_PUBLIC_CONVEX_URL=https://exciting-deer-586.convex.cloud`, `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET`. Preview: `NEXT_PUBLIC_CONVEX_URL=https://strong-turtle-110.convex.cloud`.
+   - Convex prod: `npx convex env set --prod ADMIN_SESSION_SECRET <same value>`.
+   - Then `npx convex deploy` once from a logged-in machine, and generate a production deploy key in the Convex dashboard, set it as `CONVEX_DEPLOY_KEY` on Vercel, and change the build command to `npx convex deploy --cmd 'npm run build'`.
+3. Type: A (Plex Mono Bold, current), B (Plex Sans Condensed), C (Plex Sans), D (Plex Serif). Pick one.
+4. Cursor interactions for the landing build, proposed in the canvas comment thread: live crosshair, hover-revealed dimensions, ghost cursor replaying an automation, orbitable wireframe hero, scroll-driven drawing. Say which to cut.
+5. A separate "automation and anonymity showcase" brief (Cloudflare Workers, WebAssembly, edge functions) was pasted and parked. It conflicts with this repo's stack rules. Decide: separate project, a blog post here, or dropped.
+6. On-demand revalidation after publish. Public pages revalidate every 300s; a route handler that calls `revalidatePath` from the admin publish flow would make publishes immediate. Phase 6 decision.
 
 ### Rules that must hold in every phase
 

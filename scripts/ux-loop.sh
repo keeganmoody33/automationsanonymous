@@ -17,21 +17,26 @@ OUT="ux-out/$STAMP"
 SESSION="ux-loop-$$"
 mkdir -p "$OUT"
 
+# route  expected-status
 ROUTES=(
-  /
-  /automations
-  "/automations?tool=n8n&difficulty=beginner"
-  /automations/example-slug
-  /tools
-  /tools/example-tool
-  /stacks/a-to-b
-  /blog
-  /blog/example-post
-  /submit
-  /admin/queue
-  /admin/automations/example-id
-  /admin/import
-  /does-not-exist
+  "/ 200"
+  "/automations 200"
+  "/automations?tool=n8n&difficulty=beginner 200"
+  "/automations/placeholder-smoke-test 200"
+  "/automations/does-not-exist 404"
+  "/tools 200"
+  "/tools/placeholder-tool 200"
+  "/tools/does-not-exist 404"
+  "/stacks/placeholder-tool-to-other-tool 200"
+  "/stacks/placeholder-tool-to-placeholder-tool 404"
+  "/stacks/a-to-b 404"
+  "/blog 200"
+  "/blog/example-post 200"
+  "/submit 200"
+  "/admin/queue 200"
+  "/admin/automations/example-id 200"
+  "/admin/import 200"
+  "/does-not-exist 404"
 )
 
 # name  width  height
@@ -46,21 +51,33 @@ REPORT="$OUT/report.md"
   echo
   echo "Base: $BASE"
   echo
-  echo "| Route | HTTP | Title | Console errors | Phone | Desktop |"
-  echo "|---|---|---|---|---|---|"
+  echo "| Route | HTTP | Canonical | Robots | Description | Title | Console errors | Phone | Desktop |"
+  echo "|---|---|---|---|---|---|---|---|---|"
 } > "$REPORT"
 
 ab() { agent-browser --session "$SESSION" "$@"; }
 
 # Always close the browser; mark the report if the run died partway.
-trap 'rc=$?; ab close >/dev/null 2>&1 || true; if [ $rc -ne 0 ]; then echo "| ABORTED (exit $rc) | | | | | |" >> "$REPORT"; echo "ux-loop aborted (exit $rc); partial report: $REPORT" >&2; fi' EXIT
+trap 'rc=$?; ab close >/dev/null 2>&1 || true; if [ $rc -ne 0 ]; then echo "| ABORTED (exit $rc) | | | | | | | | |" >> "$REPORT"; echo "ux-loop aborted (exit $rc); partial report: $REPORT" >&2; fi' EXIT
 
 slug() { echo "$1" | sed -E 's#^/$#home#; s#^/##; s#[^A-Za-z0-9]+#-#g; s#-+$##'; }
 
-for route in "${ROUTES[@]}"; do
+fail=0
+body="$(mktemp)"
+for entry in "${ROUTES[@]}"; do
+  read -r route expect <<< "$entry"
   name="$(slug "$route")"
   url="$BASE$route"
-  code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 "$url" || echo 000)"
+  code="$(curl -s -o "$body" -w '%{http_code}' --max-time 30 "$url" || echo 000)"
+  # The answer-engine surface: what a crawler sees without a browser.
+  canonical="$(grep -oE '<link rel="canonical" href="[^"]*"' "$body" | sed -E 's/.*href="([^"]*)"/\1/' | head -1 || true)"
+  robots="$(grep -oE '<meta name="robots" content="[^"]*"' "$body" | sed -E 's/.*content="([^"]*)"/\1/' | head -1 || true)"
+  desc="$(grep -oE '<meta name="description" content="[^"]*"' "$body" | sed -E 's/.*content="([^"]*)"/\1/' | head -1 || true)"
+  mark="$code"
+  [ "$code" != "$expect" ] && { mark="**$code** (want $expect)"; fail=$((fail+1)); }
+  case "$route" in
+    /admin*) echo "$robots" | grep -q noindex || { robots="**${robots:-missing}** (want noindex)"; fail=$((fail+1)); } ;;
+  esac
   title=""; errors=""; shots=()
   for vp in "${VIEWPORTS[@]}"; do
     read -r vname w h <<< "$vp"
@@ -74,9 +91,14 @@ for route in "${ROUTES[@]}"; do
     ab screenshot --full "$shot" >/dev/null
     shots+=("$shot")
   done
-  echo "| \`$route\` | $code | $title | ${errors:-none} | ${shots[0]} | ${shots[1]} |" >> "$REPORT"
+  echo "| \`$route\` | $mark | ${canonical:-none} | ${robots:-none} | $( [ -n "$desc" ] && echo "${desc:0:60}" || echo none ) | $title | ${errors:-none} | ${shots[0]} | ${shots[1]} |" >> "$REPORT"
   echo "$code  $route"
 done
 
+rm -f "$body"
 echo
 echo "Report: $REPORT"
+if [ "$fail" -gt 0 ]; then
+  echo "$fail check(s) failed; see bold cells in the report" >&2
+  exit 2
+fi
