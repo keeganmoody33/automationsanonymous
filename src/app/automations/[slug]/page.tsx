@@ -5,6 +5,7 @@ import { fetchQuery } from "convex/nextjs";
 import { api } from "@convex/_generated/api";
 import { Sheet } from "@/components/sheet";
 import { AutomationRecord } from "@/components/automation-record";
+import { JsonLd, howTo } from "@/lib/schema-org";
 
 // Static with revalidation. Slugs are permanent, so the URL never moves.
 // force-static: convex/nextjs fetches with no-store, which would otherwise
@@ -34,6 +35,7 @@ export default async function AutomationPage(props: PageProps<"/automations/[slu
   if (!a) notFound();
   return (
     <Sheet number="04" route={`/automations/${a.slug}`} title={a.title} summary={a.summary}>
+      <JsonLd data={howTo(a)} />
       <AutomationRecord a={a} />
     </Sheet>
   );

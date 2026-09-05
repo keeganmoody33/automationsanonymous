@@ -5,6 +5,7 @@ import { fetchQuery } from "convex/nextjs";
 import { api } from "@convex/_generated/api";
 import { Sheet } from "@/components/sheet";
 import { AutomationList } from "@/components/automation-list";
+import { JsonLd, automationItems, itemList } from "@/lib/schema-org";
 
 export const dynamic = "force-static";
 export const revalidate = 300;
@@ -36,6 +37,9 @@ export default async function StackPage(props: PageProps<"/stacks/[slug]">) {
       title={`Connect ${stack.a.name} to ${stack.b.name}`}
       summary={`Published automations that connect ${stack.a.name} to ${stack.b.name}.`}
     >
+      <JsonLd
+        data={itemList(`Connect ${stack.a.name} to ${stack.b.name}`, `/stacks/${slug}`, automationItems(stack.items))}
+      />
       <AutomationList items={stack.items} />
     </Sheet>
   );

@@ -31,12 +31,17 @@ ROUTES=(
   "/stacks/placeholder-tool-to-placeholder-tool 404"
   "/stacks/a-to-b 404"
   "/blog 200"
-  "/blog/example-post 200"
+  "/blog/placeholder-post 200"
+  "/blog/example-post 404"
   "/submit 200"
   "/admin/queue 200"
   "/admin/automations/example-id 200"
   "/admin/import 200"
   "/does-not-exist 404"
+  "/sitemap.xml 200"
+  "/robots.txt 200"
+  "/llms.txt 200"
+  "/llms-full.txt 200"
 )
 
 # name  width  height

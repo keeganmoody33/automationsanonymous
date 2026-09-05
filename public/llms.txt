@@ -1,0 +1,20 @@
+# Automations Anonymous
+
+> A public directory of working automations, each documented as a structured record: trigger, steps, prerequisites, failure modes, and the runnable payload. Submissions are anonymous. There are no authors, accounts, or profiles.
+
+Every automation page is server-rendered HTML with a HowTo JSON-LD block. The summary is the first paragraph under the heading and is written to stand alone.
+
+## Full corpus
+
+- [All published automations, with payloads](https://automationsanonymous.com/llms-full.txt): plain text, regenerated as records are published.
+
+## Indexes
+
+- [Automations](https://automationsanonymous.com/automations): filter by tool, category, difficulty.
+- [Tools](https://automationsanonymous.com/tools): each tool page lists the automations that use it.
+- [Blog](https://automationsanonymous.com/blog): editorial posts.
+- [Sitemap](https://automationsanonymous.com/sitemap.xml)
+
+## Contributing
+
+- [Submit an automation](https://automationsanonymous.com/submit): anonymous, reviewed by hand before publishing.

@@ -11,7 +11,7 @@ A public directory of real, working automations plus an editorial blog. Every au
 
 ## Setup
 
-> Build status: Phase 4 of 8 (Convex schema, functions, admin gate; public pages read from Convex). Content layer, flows, and switches land in later phases. Live at https://automationsanonymous.com.
+> Build status: Phase 5 of 8 (MDX blog with validated frontmatter, JSON-LD builders, sitemap, robots, llms.txt). Flows, switches, and instructions land in later phases. Live at https://automationsanonymous.com.
 
 1. Clone the repo and install dependencies:
 

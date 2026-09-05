@@ -5,6 +5,7 @@ import { fetchQuery } from "convex/nextjs";
 import { api } from "@convex/_generated/api";
 import { Sheet } from "@/components/sheet";
 import { AutomationList } from "@/components/automation-list";
+import { JsonLd, automationItems, itemList } from "@/lib/schema-org";
 
 export const dynamic = "force-static";
 export const revalidate = 300;
@@ -43,6 +44,7 @@ export default async function ToolPage(props: PageProps<"/tools/[slug]">) {
           </a>
         </p>
       ) : null}
+      <JsonLd data={itemList(`Automations using ${tool.name}`, `/tools/${tool.slug}`, automationItems(items))} />
       <AutomationList items={items} />
     </Sheet>
   );
