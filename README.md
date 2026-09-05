@@ -11,7 +11,7 @@ A public directory of real, working automations plus an editorial blog. Every au
 
 ## Setup
 
-> Build status: Phase 6 of 8 (submit form, import review, review queue with approve, reject, publish). Switches and instructions land in later phases. Live at https://automationsanonymous.com.
+> Build status: Phase 7 of 8 plus the landing page (human/agent mode and type switches, the designed landing with the Three.js hero and loading overlay). Phase 8 (CLAUDE.md and instruction files) is next. Live at https://automationsanonymous.com.
 
 1. Clone the repo and install dependencies:
 

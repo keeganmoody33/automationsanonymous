@@ -10,12 +10,12 @@ State of the build and every decision made so far, so any session can resume wit
 | --- | --- |
 | Branch | `claude/automationsanonymous-repo-build-1lnge8` |
 | Pull request | #2 merged 2026-09-05; `main` = Phases 1-4. New work continues on the branch and lands by PR. |
-| Phases done | 1 (repo init), 2 (app shell and design tokens), 3 (routes stubbed), 4 (Convex schema, functions, admin gate), 5 (content layer and structured data), 6 (flows) |
-| Next phase | 7 (switches: ModeContext human/agent, font registry) |
+| Phases done | 1 (repo init), 2 (app shell and design tokens), 3 (routes stubbed), 4 (Convex schema, functions, admin gate), 5 (content layer and structured data), 6 (flows), 7 (switches), landing page from canvas Rev C |
+| Next phase | 8 (CLAUDE.md and instruction files) |
 | Vercel | Project `automationsanonymous` under team `lecturesfrom` (slug `lecturesfromog`). Production = Phase 4, deployed via CLI 2026-09-05. Production env: `NEXT_PUBLIC_CONVEX_URL`, `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET` all set; admin login verified live 2026-09-05. |
 | Convex | Dev `strong-turtle-110`, prod `exciting-deer-586`, team `lecturesfrom`, project `automationsanonymous`. Functions deployed to both. `ADMIN_SESSION_SECRET` set on both. Prod holds one placeholder automation (`placeholder-smoke-test`) and two placeholder tools (`placeholder-tool`, `other-tool`), all obviously placeholder. |
 | Domain | `automationsanonymous.com` and `www` on Cloudflare, DNS-only CNAMEs to `cname.vercel-dns.com`, both hostnames verified on the Vercel project. Live. |
-| Landing design | Claude Design canvas, Rev C: https://claude.ai/code/artifact/cc15dfe5-8b3f-461e-b874-44fc4d179e2e |
+| Landing design | Claude Design canvas, Rev C: https://claude.ai/code/artifact/cc15dfe5-8b3f-461e-b874-44fc4d179e2e. Built: `src/components/landing/*`. |
 | QA | `scripts/e2e-flows.sh` drives submit, review, approve, publish, import, promote, reject in a browser against dev. `scripts/ux-loop.sh [base-url]`: screenshots every route at 390 and 1280, checks HTTP status against expectation, canonical, robots (admin must be noindex), description, console errors. Exit 2 on any failed check. |
 
 ### Decisions made on top of the brief
@@ -34,6 +34,12 @@ State of the build and every decision made so far, so any session can resume wit
 - Stack slugs are `${a}-to-${b}`; every `-to-` split point is tried against the tools table because tool slugs may contain `-to-`.
 - Hairline token is 1px below 2dppx so grid paper and rules render on 1x displays.
 - Local Turbopack builds fail on this Mac (worker cannot bind a port); use `--webpack` locally. Vercel builds with Turbopack.
+- Switches (Phase 7): `PresentationProvider` keeps mode and font in a localStorage-backed external store read with `useSyncExternalStore`; a pre-paint inline script in the root layout stamps `data-mode` and `data-font` on `<html>` so the first frame is right. CSS reads the attributes: `.human-only` / `.agent-only` for mode, `[data-font]` repoints `--font-voice-face`. Server HTML never changes.
+- Font registry: all four Plex voice faces load at weight 700 in the root layout (`--font-voice-face-<id>`); `src/lib/fonts.ts` is the registry. Default A (Plex Mono Bold) per the canvas note. The type thread is now a user toggle, not a decision.
+- Agent mode on record pages hides Problem, Trigger, and Origin, keeps summary, prerequisites, steps, payload, failure modes, and shows the HowTo JSON-LD in a copyable block that is always in the HTML.
+- Landing: `src/app/page.tsx` renders `Landing` from published records (counts, latest record, stacks = distinct tool pairs). SVG drawings are server-rendered and animate when scrolled into view; the hero also mounts a Three.js wireframe of the same assembly, client only, orbitable, auto-rotating unless reduced motion; the SVG dims under it once WebGL is up. Landing CSS is a module whose every color, stroke, radius, and font is a token. Cursor interactions kept: live HUD readout, orbitable hero, scroll-triggered drawing. Cut: ghost cursor replay, hover-revealed dimensions.
+- Loading overlay plays once per session (`sessionStorage` `aa:plotted`), client only, skipped under reduced motion. The decision is made once per page load because React runs effects twice in development.
+- Nav: Stacks has no index route in the brief, so the header and footer link Automations, Tools, Blog, Submit; stacks are reached through tool pages.
 - Blog: `content/blog/*.mdx`, filename is the permanent slug, frontmatter is `title`, `description`, `date`, optional `updated` and `draft`, validated by zod in `src/lib/blog.ts` at build; any other key or a bad date fails `next build`. Frontmatter reaches JS through `remark-frontmatter` + `remark-mdx-frontmatter` named as strings in `next.config.ts` so Turbopack accepts them.
 - JSON-LD only through `src/lib/schema-org.tsx` builders and `<JsonLd>`: HowTo on automation pages (`totalTime` from `timeSavedMinutes`), Article on posts (publisher is the site, no author), ItemList on tool, stack, and tools index pages.
 - `sitemap.ts`, `robots.ts` (disallow `/admin`), `public/llms.txt` static, `llms-full.txt` route generated from published records with payloads verbatim; sitemap and llms-full are force-static with 300s revalidate.
@@ -48,9 +54,7 @@ State of the build and every decision made so far, so any session can resume wit
 ### Open threads
 
 1. Git-triggered Vercel builds. Pushes to `main` now build (env is set) but do not deploy Convex. Generate a production deploy key in the Convex dashboard, set it as `CONVEX_DEPLOY_KEY` on Vercel production, and change the build command to `npx convex deploy --cmd 'npm run build'`. Until then, deploy Convex with `npx convex deploy` from a logged-in machine whenever `convex/` changes.
-2. Type: A (Plex Mono Bold, current), B (Plex Sans Condensed), C (Plex Sans), D (Plex Serif). Pick one.
-3. Cursor interactions for the landing build, proposed in the canvas comment thread: live crosshair, hover-revealed dimensions, ghost cursor replaying an automation, orbitable wireframe hero, scroll-driven drawing. Say which to cut.
-4. A separate "automation and anonymity showcase" brief (Cloudflare Workers, WebAssembly, edge functions) was pasted and parked. It conflicts with this repo's stack rules. Decide: separate project, a blog post here, or dropped.
+2. A separate "automation and anonymity showcase" brief (Cloudflare Workers, WebAssembly, edge functions) was pasted and parked. It conflicts with this repo's stack rules. Decide: separate project, a blog post here, or dropped.
 
 ### Rules that must hold in every phase
 

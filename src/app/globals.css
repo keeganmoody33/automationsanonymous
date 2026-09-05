@@ -183,6 +183,67 @@
   text-transform: uppercase;
 }
 
+
+/* Font registry (Phase 7). The root layout loads each face into a
+   *-face-<id> variable; [data-font] on <html> picks which one the voice role
+   resolves to. Default is mono. Components never reference these. */
+:root { --font-voice-face: var(--font-voice-face-mono); }
+:root[data-font="sans-condensed"] { --font-voice-face: var(--font-voice-face-sans-condensed); }
+:root[data-font="sans"] { --font-voice-face: var(--font-voice-face-sans); }
+:root[data-font="serif"] { --font-voice-face: var(--font-voice-face-serif); }
+
+/* Reading mode (Phase 7). Presentation only: the same server HTML, with
+   human-only prose hidden and agent-only blocks shown. */
+:root[data-mode="agent"] .human-only { display: none; }
+:root:not([data-mode="agent"]) .agent-only { display: none; }
+:root[data-mode="agent"] .mode-dense { --grid-major: 32px; }
+
+/* Drafting vocabulary for inline SVG (used by the landing drawings and the
+   wordmark). Strokes and colors are tokens; nothing here is a literal. */
+@layer components {
+  .ln { fill: none; stroke: var(--ink); stroke-width: var(--stroke-thin); stroke-linecap: square; stroke-linejoin: miter; vector-effect: non-scaling-stroke; }
+  .ln-hair { stroke-width: var(--stroke-hairline); stroke: var(--ink-2); }
+  .ln-heavy { stroke-width: var(--stroke-heavy); }
+  .ln-hidden { stroke-dasharray: 5 4; stroke: var(--ink-2); }
+  .ln-center { stroke-dasharray: 14 4 3 4; stroke: var(--ink-3); stroke-width: var(--stroke-hairline); }
+  .ln-dim { stroke: var(--ink-2); stroke-width: var(--stroke-hairline); }
+  .ln-mark { stroke: var(--mark); }
+  .ln-faint { stroke: var(--ink-3); }
+  .fill-paper { fill: var(--paper); }
+  .fill-soft { fill: var(--mark-soft); }
+  .fill-line { fill: var(--line); }
+  .fill-ink { fill: var(--ink); }
+  .fill-ink-3 { fill: var(--ink-3); }
+  .fill-mark { fill: var(--mark); }
+  .t { font-family: var(--font-chrome); font-size: 9px; letter-spacing: 0.1em; fill: var(--ink-2); text-transform: uppercase; }
+  .t-ink { fill: var(--ink); }
+  .t-mark { fill: var(--mark); }
+  .t-sm { font-size: 7px; }
+  .t-lg { font-size: 11px; }
+  .balloon circle { fill: var(--paper); stroke: var(--ink); stroke-width: var(--stroke-thin); vector-effect: non-scaling-stroke; }
+  .balloon text { font-family: var(--font-chrome); font-size: 10px; font-weight: 500; fill: var(--ink); text-anchor: middle; dominant-baseline: central; }
+
+  /* Drawing animations. Paused until .dwg-live is set by the viewport
+     observer, so drawings draw themselves as they scroll in. */
+  .draw { stroke-dasharray: 1; stroke-dashoffset: 1; animation: dwg-draw 1.6s cubic-bezier(.4,0,.2,1) forwards paused; }
+  .pop { opacity: 0; animation: dwg-pop .5s ease-out forwards paused; }
+  .dwg-live .draw, .dwg-live .pop, .dwg-live .sweep, .dwg-live .spin { animation-play-state: running; }
+  .d1 { animation-delay: .1s } .d2 { animation-delay: .5s } .d3 { animation-delay: .9s } .d4 { animation-delay: 1.3s } .d5 { animation-delay: 1.7s }
+  .p1 { animation-delay: 1.9s } .p2 { animation-delay: 2.1s } .p3 { animation-delay: 2.3s } .p4 { animation-delay: 2.5s }
+  .sweep { animation: dwg-sweep 7s linear infinite paused; animation-delay: 2.6s; }
+  .spin { transform-origin: 335px 330px; animation: dwg-spin 9s linear infinite paused; }
+  .blink { animation: dwg-blink 1.1s steps(1) infinite; }
+  @keyframes dwg-draw { to { stroke-dashoffset: 0; } }
+  @keyframes dwg-pop { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  @keyframes dwg-sweep { 0% { transform: translateX(0); opacity: 0; } 4% { opacity: 1; } 96% { opacity: 1; } 100% { transform: translateX(560px); opacity: 0; } }
+  @keyframes dwg-spin { to { transform: rotate(360deg); } }
+  @keyframes dwg-blink { 50% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) {
+    .draw, .pop { animation: none; stroke-dashoffset: 0; opacity: 1; }
+    .sweep, .spin { animation: none; }
+  }
+}
+
 @layer base {
   * {
     border-color: var(--line);
