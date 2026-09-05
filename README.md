@@ -11,7 +11,7 @@ A public directory of real, working automations plus an editorial blog. Every au
 
 ## Setup
 
-> Build status: Phase 7 of 8 plus the landing page (human/agent mode and type switches, the designed landing with the Three.js hero and loading overlay). Phase 8 (CLAUDE.md and instruction files) is next. Live at https://automationsanonymous.com.
+> Build status: all eight phases of the brief plus the landing page are built and live at https://automationsanonymous.com. See `docs/HANDOFF.md` for state and `CLAUDE.md` for the rules. Live at https://automationsanonymous.com.
 
 1. Clone the repo and install dependencies:
 

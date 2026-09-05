@@ -10,8 +10,8 @@ State of the build and every decision made so far, so any session can resume wit
 | --- | --- |
 | Branch | `claude/automationsanonymous-repo-build-1lnge8` |
 | Pull request | #2 merged 2026-09-05; `main` = Phases 1-4. New work continues on the branch and lands by PR. |
-| Phases done | 1 (repo init), 2 (app shell and design tokens), 3 (routes stubbed), 4 (Convex schema, functions, admin gate), 5 (content layer and structured data), 6 (flows), 7 (switches), landing page from canvas Rev C |
-| Next phase | 8 (CLAUDE.md and instruction files) |
+| Phases done | All eight, plus the landing page from canvas Rev C. |
+| Next | Real content. Delete the PLACEHOLDER records and post, then import or submit real automations. Operator items in open threads. |
 | Vercel | Project `automationsanonymous` under team `lecturesfrom` (slug `lecturesfromog`). Production = Phase 4, deployed via CLI 2026-09-05. Production env: `NEXT_PUBLIC_CONVEX_URL`, `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET` all set; admin login verified live 2026-09-05. |
 | Convex | Dev `strong-turtle-110`, prod `exciting-deer-586`, team `lecturesfrom`, project `automationsanonymous`. Functions deployed to both. `ADMIN_SESSION_SECRET` set on both. Prod holds one placeholder automation (`placeholder-smoke-test`) and two placeholder tools (`placeholder-tool`, `other-tool`), all obviously placeholder. |
 | Domain | `automationsanonymous.com` and `www` on Cloudflare, DNS-only CNAMEs to `cname.vercel-dns.com`, both hostnames verified on the Vercel project. Live. |
