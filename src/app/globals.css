@@ -37,10 +37,15 @@
   --tick: 6px;
   --tick-major: 10px;
 
-  /* font roles. The faces are loaded in the root layout via next/font and
-     bound to --font-chrome-face and --font-voice-face. Components only ever
-     use --font-chrome and --font-voice. Phase 7 swaps the *-face values
-     against a registry; nothing in a component changes. */
+}
+
+/* Font roles. The faces are loaded in the root layout via next/font and
+   bound to --font-chrome-face and --font-voice-face. Components only ever
+   use --font-chrome and --font-voice, as var() or as the font-chrome and
+   font-voice utilities. Phase 7 swaps the *-face values against a registry;
+   nothing in a component changes. Declared once, here, so Tailwind emits the
+   resolved stack into :root and the utilities point at it. */
+@theme {
   --font-chrome: var(--font-chrome-face), ui-monospace, SFMono-Regular, Menlo, monospace;
   --font-voice: var(--font-voice-face), ui-monospace, SFMono-Regular, Menlo, monospace;
 }
@@ -78,10 +83,6 @@
   --color-border: var(--line);
   --color-input: var(--line);
   --color-ring: var(--mark);
-
-  /* fonts: font-chrome, font-voice */
-  --font-chrome: var(--font-chrome);
-  --font-voice: var(--font-voice);
 
   /* radii: everything square */
   --radius: 0px;
