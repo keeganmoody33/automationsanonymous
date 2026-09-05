@@ -11,12 +11,12 @@ State of the build and every decision made so far, so any session can resume wit
 | Branch | `claude/automationsanonymous-repo-build-1lnge8` |
 | Pull request | #2 merged 2026-09-05; `main` = Phases 1-4. New work continues on the branch and lands by PR. |
 | Phases done | All eight, plus the landing page from canvas Rev C. |
-| Next | Real content. Delete the PLACEHOLDER records and post, then import or submit real automations. Operator items in open threads. |
+| Next | More real content, and whatever the agent surface turns up in use. Operator items in open threads. |
 | Vercel | Project `automationsanonymous` under team `lecturesfrom` (slug `lecturesfromog`). Production = Phase 4, deployed via CLI 2026-09-05. Production env: `NEXT_PUBLIC_CONVEX_URL`, `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET` all set; admin login verified live 2026-09-05. |
 | Convex | Dev `strong-turtle-110`, prod `exciting-deer-586`, team `lecturesfrom`, project `automationsanonymous`. Functions deployed to both. `ADMIN_SESSION_SECRET` set on both. Prod holds one placeholder automation (`placeholder-smoke-test`) and two placeholder tools (`placeholder-tool`, `other-tool`), all obviously placeholder. |
 | Domain | `automationsanonymous.com` and `www` on Cloudflare, DNS-only CNAMEs to `cname.vercel-dns.com`, both hostnames verified on the Vercel project. Live. |
 | Landing design | Claude Design canvas, Rev C: https://claude.ai/code/artifact/cc15dfe5-8b3f-461e-b874-44fc4d179e2e. Built: `src/components/landing/*`. |
-| QA | `scripts/e2e-flows.sh` drives submit, review, approve, publish, import, promote, reject in a browser against dev. `scripts/ux-loop.sh [base-url]`: screenshots every route at 390 and 1280, checks HTTP status against expectation, canonical, robots (admin must be noindex), description, console errors. Exit 2 on any failed check. |
+| QA | `scripts/agent-surface-check.sh [base-url]` checks agent parity and the MCP server, read-only and safe against production. `scripts/e2e-flows.sh` drives submit, review, approve, publish, import, promote, reject in a browser against dev. `scripts/ux-loop.sh [base-url]`: screenshots every route at 390 and 1280, checks HTTP status against expectation, canonical, robots (admin must be noindex), description, console errors. Exit 2 on any failed check. |
 
 ### Decisions made on top of the brief
 
@@ -34,6 +34,9 @@ State of the build and every decision made so far, so any session can resume wit
 - Stack slugs are `${a}-to-${b}`; every `-to-` split point is tried against the tools table because tool slugs may contain `-to-`.
 - Hairline token is 1px below 2dppx so grid paper and rules render on 1x displays.
 - Local Turbopack builds fail on this Mac (worker cannot bind a port); use `--webpack` locally. Vercel builds with Turbopack.
+- The site now carries real content: six authored automations whose payloads were each verified before publishing (the backup script was run against a scratch tree and its archive opened; the uptime script was run in both states against a live URL; the YAML, XML, JSON and JavaScript were parsed; the cron line was field-checked). `content/seed/automations.json` is the source of truth, checked against the project's own rules before it can be written. No `timeSavedMinutes` is set anywhere: a guessed number would be a fabricated metric.
+- Agent surface, added on request after the brief (the brief's "not in scope" list excluded a public API and an MCP server; the operator reversed that). `/api/*` gives read parity plus the anonymous submit, and `/mcp` is a stateless MCP server with seven tools. Nothing is exposed that is not already public to a person: editing, approving and publishing stay behind the admin gate for humans and agents alike. Parity table is in `CLAUDE.md`.
+- `remark-mdx-frontmatter` was dropped: it was the only path to `toml`, which carries two high advisories with no fix. Frontmatter is now read off disk and parsed with `yaml`, which also means listing posts no longer imports every MDX module. `npm audit` is clean.
 - Switches (Phase 7): `PresentationProvider` keeps mode and font in a localStorage-backed external store read with `useSyncExternalStore`; a pre-paint inline script in the root layout stamps `data-mode` and `data-font` on `<html>` so the first frame is right. CSS reads the attributes: `.human-only` / `.agent-only` for mode, `[data-font]` repoints `--font-voice-face`. Server HTML never changes.
 - Font registry: all four Plex voice faces load at weight 700 in the root layout (`--font-voice-face-<id>`); `src/lib/fonts.ts` is the registry. Default A (Plex Mono Bold) per the canvas note. The type thread is now a user toggle, not a decision.
 - Agent mode on record pages hides Problem, Trigger, and Origin, keeps summary, prerequisites, steps, payload, failure modes, and shows the HowTo JSON-LD in a copyable block that is always in the HTML.

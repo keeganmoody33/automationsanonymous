@@ -85,4 +85,14 @@ If Turbopack fails locally with `binding to a port: Operation not permitted`, th
 
 `scripts/e2e-flows.sh` drives the submit, review, publish, import, and reject flows in a browser against a local dev server and the Convex dev deployment. It creates placeholder records in dev; never point it at production.
 
+`scripts/agent-surface-check.sh [base-url]` checks that an agent has parity with a person: every machine view answers, the MCP server handshakes and lists its tools, a tool call returns a real record, and no private field appears in a public response. Read-only, so it is safe against production.
+
+## For agents
+
+The directory is usable without a browser. `GET /api` is the capability manifest; `/mcp` is a stateless MCP server with `search_automations`, `get_automation`, `list_tools`, `get_stack`, `list_posts`, `get_post` and `submit_automation`. `/llms.txt` points at both. The parity table is in `CLAUDE.md`.
+
+## Content
+
+`content/seed/automations.json` holds the authored records. `scripts/seed-content.sh <file> [--prod]` publishes them through the real review path (createAuthored, approve, publish); it is resumable and safe to run twice. `scripts/clear-placeholders.sh [--prod]` deletes anything titled PLACEHOLDER, which the test scripts create on purpose.
+
 The build fails on any blog post with invalid frontmatter. That is intentional.

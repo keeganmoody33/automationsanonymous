@@ -42,6 +42,16 @@ ROUTES=(
   "/robots.txt 200"
   "/llms.txt 200"
   "/llms-full.txt 200"
+  "/api 200"
+  "/api/automations 200"
+  "/api/automations/back-up-one-folder-every-night 200"
+  "/api/automations/back-up-one-folder-every-night.md 200"
+  "/api/automations/does-not-exist 404"
+  "/api/tools 200"
+  "/api/tools/cron 200"
+  "/api/stacks/cron-to-slack 200"
+  "/api/blog 200"
+  "/api/blog/how-to-pick-your-first-automation.md 200"
 )
 
 # name  width  height

@@ -2,11 +2,23 @@
 
 > A public directory of working automations, each documented as a structured record: trigger, steps, prerequisites, failure modes, and the runnable payload. Submissions are anonymous. There are no authors, accounts, or profiles.
 
-Every automation page is server-rendered HTML with a HowTo JSON-LD block. The summary is the first paragraph under the heading and is written to stand alone.
+Every automation page is server-rendered HTML with a HowTo JSON-LD block. The summary is the first paragraph under the heading and is written to stand alone. Payloads are reproduced verbatim and are never paraphrased. Slugs are permanent once published, so a citation made today resolves later.
 
 ## Full corpus
 
-- [All published automations, with payloads](https://automationsanonymous.com/llms-full.txt): plain text, regenerated as records are published.
+- [Every published automation, with payloads](https://automationsanonymous.com/llms-full.txt): plain text, regenerated as records are published.
+
+## For agents
+
+Anything a person can do on this site, an agent can do without parsing HTML.
+
+- [MCP server](https://automationsanonymous.com/mcp): tools for search_automations, get_automation, list_tools, get_stack, list_posts, get_post, and submit_automation. Streamable HTTP, no auth.
+- [Capability manifest](https://automationsanonymous.com/api): every endpoint, its parameters, and the rules that govern the corpus.
+- [Automations, filterable](https://automationsanonymous.com/api/automations): accepts tool, category, difficulty, q, and limit.
+- One record: `/api/automations/{slug}` for JSON with its JSON-LD, or `/api/automations/{slug}.md` for the plain-text form including the payload.
+- [Tools](https://automationsanonymous.com/api/tools), one tool at `/api/tools/{slug}`, a pair at `/api/stacks/{a}-to-{b}`.
+- [Posts](https://automationsanonymous.com/api/blog), one post at `/api/blog/{slug}.md`.
+- Submitting: `POST /api/submit` with the record shape, or the submit_automation tool. No account. It lands in a review queue and a person reads it before it is published.
 
 ## Indexes
 

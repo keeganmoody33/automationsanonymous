@@ -34,6 +34,29 @@ Next.js 16 App Router, TypeScript strict, Tailwind 4, shadcn/ui, Convex, MDX in-
 8. The mode switch and the font switch are presentation only. They set attributes on `<html>` that CSS reads. They never change the server HTML and never fetch anything different.
 9. The Convex and MDX split is fixed: records in Convex, posts in the repo.
 
+## The agent surface
+
+Anything a person can do on this site, an agent can do without parsing HTML. That is a rule, not a feature. When you add a capability to the UI, add the machine path in the same change, and extend `scripts/agent-surface-check.sh` to prove it.
+
+| A person can | An agent can |
+| --- | --- |
+| Browse `/automations` | `GET /api/automations`, or `search_automations` |
+| Filter by tool, category, difficulty | the same query parameters, or the same tool arguments |
+| Read a record and copy its payload | `GET /api/automations/{slug}` or `.md`, or `get_automation` |
+| Browse `/tools`, open one | `GET /api/tools`, `GET /api/tools/{slug}`, or `list_tools` |
+| Open a stack page | `GET /api/stacks/{a}-to-{b}`, or `get_stack` |
+| Read the blog | `GET /api/blog`, `GET /api/blog/{slug}.md`, or `list_posts` and `get_post` |
+| Submit anonymously at `/submit` | `POST /api/submit`, or `submit_automation` |
+| Discover what exists | `GET /api` and `/llms.txt` |
+
+Nothing else is public to anyone, so nothing else is exposed. Editing, approving and publishing stay behind the admin gate for humans and agents alike; there is no agent path to them and there should not be.
+
+- The MCP server is `src/app/api/mcp/route.ts`, stateless, mounted at `/api/mcp` and rewritten to `/mcp`. No auth: the read surface is public and the one write is the same anonymous submit a browser gets.
+- `src/lib/record-text.ts` is the one renderer for a record as text. `/llms-full.txt`, the `.md` view and the MCP tools all use it, so a machine sees the identical record everywhere.
+- `src/lib/submit-schema.ts` is the one structured submit schema, shared by the endpoint and the MCP tool. The browser form converts its text fields into the same shape. Convex validates all of it again.
+- Read endpoints send `access-control-allow-origin: *` and a shared `s-maxage`; agents are not on this domain.
+- `scripts/agent-surface-check.sh [base-url]` is read-only and safe against production: it handshakes MCP, lists tools, calls one, and asserts no private field appears in any public response.
+
 ## Voice
 
 - The domain name is the only joke. No twelve-step or recovery language anywhere: copy, routes, component names, error states, commit messages.

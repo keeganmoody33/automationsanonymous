@@ -13,4 +13,6 @@ Rules that hold everywhere:
 - Slugs are permanent once published. Nothing writes `status: "published"` except `admin/automations.publish`.
 - Mode and font switches are presentation only and never change server HTML.
 - Voice: the domain name is the only joke; no twelve-step or recovery language anywhere; no em dashes in user-facing copy; specific over adjectival; never fabricate a metric, testimonial, company, or realistic sample; empty states say the thing is empty.
+- Agent parity: anything a person can do on the site, an agent can do through `/api/*` or the MCP server at `/mcp`. Adding a UI capability means adding the machine path in the same change.
+- One renderer for a record as text (`src/lib/record-text.ts`) and one submit schema (`src/lib/submit-schema.ts`). Do not write a second.
 - No new dependencies without asking.
