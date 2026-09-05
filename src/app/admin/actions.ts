@@ -47,6 +47,7 @@ export async function publishAutomation(id: Id<"automations">, slug: string): Pr
   try {
     await fetchMutation(api.admin.automations.publish, { token, id, slug });
     const a = await fetchQuery(api.public.automations.getBySlug, { slug });
+    revalidatePath("/");
     revalidatePath("/automations");
     revalidatePath(`/automations/${slug}`);
     revalidatePath("/tools");
