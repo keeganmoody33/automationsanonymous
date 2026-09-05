@@ -1,0 +1,197 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/*
+  Design tokens for automationsanonymous.com.
+
+  Every visual value a component may use lives here. Components reference
+  tokens through Tailwind utilities or var(--token). Nothing hardcodes a
+  color, a stroke width, a radius, or a font stack.
+
+  Idiom: CAD drafting. Paper and ink, hairline strokes, construction lines,
+  an 8px grid with 64px majors, measurement ticks, no rounded corners.
+*/
+
+:root {
+  /* paper and ink */
+  --paper: oklch(97% 0.008 85);
+  --paper-deep: oklch(93.5% 0.012 85);
+  --ink: oklch(22% 0.03 250);
+  --ink-2: oklch(44% 0.025 250);
+  --ink-3: oklch(66% 0.02 250);
+  --line: oklch(80% 0.015 250);
+  --line-faint: oklch(89% 0.01 250);
+  --mark: oklch(58% 0.19 30);
+  --mark-soft: oklch(58% 0.19 30 / 0.14);
+
+  /* strokes */
+  --stroke-hairline: 0.5px;
+  --stroke-thin: 1px;
+  --stroke-heavy: 1.5px;
+
+  /* grid */
+  --grid-unit: 8px;
+  --grid-major: 64px;
+
+  /* measurement ticks */
+  --tick: 6px;
+  --tick-major: 10px;
+
+  /* font roles. The faces are loaded in the root layout via next/font and
+     bound to --font-chrome-face and --font-voice-face. Components only ever
+     use --font-chrome and --font-voice. Phase 7 swaps the *-face values
+     against a registry; nothing in a component changes. */
+  --font-chrome: var(--font-chrome-face), ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-voice: var(--font-voice-face), ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+@theme inline {
+  /* colors: bg-paper, text-ink, border-line, stroke-mark ... */
+  --color-paper: var(--paper);
+  --color-paper-deep: var(--paper-deep);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-line: var(--line);
+  --color-line-faint: var(--line-faint);
+  --color-mark: var(--mark);
+  --color-mark-soft: var(--mark-soft);
+
+  /* shadcn/ui semantic aliases mapped onto the CAD palette so generated
+     components pick up the idiom without edits. */
+  --color-background: var(--paper);
+  --color-foreground: var(--ink);
+  --color-card: var(--paper);
+  --color-card-foreground: var(--ink);
+  --color-popover: var(--paper);
+  --color-popover-foreground: var(--ink);
+  --color-primary: var(--ink);
+  --color-primary-foreground: var(--paper);
+  --color-secondary: var(--paper-deep);
+  --color-secondary-foreground: var(--ink);
+  --color-muted: var(--paper-deep);
+  --color-muted-foreground: var(--ink-2);
+  --color-accent: var(--mark-soft);
+  --color-accent-foreground: var(--ink);
+  --color-destructive: var(--mark);
+  --color-destructive-foreground: var(--paper);
+  --color-border: var(--line);
+  --color-input: var(--line);
+  --color-ring: var(--mark);
+
+  /* fonts: font-chrome, font-voice */
+  --font-chrome: var(--font-chrome);
+  --font-voice: var(--font-voice);
+
+  /* radii: everything square */
+  --radius: 0px;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+
+  /* grid-derived spacing: p-unit, gap-major */
+  --spacing-unit: var(--grid-unit);
+  --spacing-major: var(--grid-major);
+  --spacing-tick: var(--tick);
+  --spacing-tick-major: var(--tick-major);
+}
+
+/* Stroke widths as utilities: border-hairline, border-thin, border-heavy
+   (and the per-side variants). */
+@utility border-hairline { border-width: var(--stroke-hairline); }
+@utility border-thin { border-width: var(--stroke-thin); }
+@utility border-heavy { border-width: var(--stroke-heavy); }
+@utility border-t-hairline { border-top-width: var(--stroke-hairline); }
+@utility border-b-hairline { border-bottom-width: var(--stroke-hairline); }
+@utility border-l-hairline { border-left-width: var(--stroke-hairline); }
+@utility border-r-hairline { border-right-width: var(--stroke-hairline); }
+@utility border-t-thin { border-top-width: var(--stroke-thin); }
+@utility border-b-thin { border-bottom-width: var(--stroke-thin); }
+@utility border-l-thin { border-left-width: var(--stroke-thin); }
+@utility border-r-thin { border-right-width: var(--stroke-thin); }
+
+/* SVG stroke widths: stroke-hairline, stroke-thin, stroke-heavy. Paired with
+   vector-effect so hairlines stay hairlines when the drawing scales. */
+@utility stroke-hairline { stroke-width: var(--stroke-hairline); vector-effect: non-scaling-stroke; }
+@utility stroke-thin { stroke-width: var(--stroke-thin); vector-effect: non-scaling-stroke; }
+@utility stroke-heavy { stroke-width: var(--stroke-heavy); vector-effect: non-scaling-stroke; }
+
+/* Line types from the drafting standard. */
+@utility line-hidden { stroke-dasharray: 5 4; }
+@utility line-center { stroke-dasharray: 14 4 3 4; }
+
+/* Drafting paper: minor grid every unit, major grid every major. */
+@utility grid-paper {
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(var(--line) var(--stroke-hairline), transparent var(--stroke-hairline)),
+    linear-gradient(90deg, var(--line) var(--stroke-hairline), transparent var(--stroke-hairline)),
+    linear-gradient(var(--line-faint) var(--stroke-hairline), transparent var(--stroke-hairline)),
+    linear-gradient(90deg, var(--line-faint) var(--stroke-hairline), transparent var(--stroke-hairline));
+  background-size:
+    var(--grid-major) var(--grid-major),
+    var(--grid-major) var(--grid-major),
+    var(--grid-unit) var(--grid-unit),
+    var(--grid-unit) var(--grid-unit);
+}
+
+/* Measurement ticks: a short perpendicular mark at the end of a dimension
+   line. tick-x draws a vertical tick, tick-y a horizontal one. */
+@utility tick-x {
+  position: relative;
+  &::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    top: 50%;
+    width: var(--stroke-thin);
+    height: var(--tick);
+    transform: translateY(-50%);
+    background: currentColor;
+  }
+}
+@utility tick-y {
+  position: relative;
+  &::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    height: var(--stroke-thin);
+    width: var(--tick);
+    transform: translateX(-50%);
+    background: currentColor;
+  }
+}
+
+/* Chrome text: labels, metadata, nav, tool names, step numbers. */
+@utility text-chrome {
+  font-family: var(--font-chrome);
+  font-size: 0.625rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+@layer base {
+  * {
+    border-color: var(--line);
+  }
+  html {
+    color-scheme: light;
+  }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-chrome);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3 {
+    font-family: var(--font-voice);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: -0.02em;
+  }
+}

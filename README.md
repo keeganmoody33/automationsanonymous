@@ -11,7 +11,7 @@ A public directory of real, working automations plus an editorial blog. Every au
 
 ## Setup
 
-> Build status: Phase 1 of 8 (repo init). The application scaffold and `package.json` land in Phase 2. Until then, the commands below describe the intended setup and will not run on a fresh clone.
+> Build status: Phase 2 of 8 (app shell and design tokens). Routes, Convex, content, and flows land in later phases.
 
 1. Clone the repo and install dependencies:
 
@@ -48,6 +48,27 @@ A public directory of real, working automations plus an editorial blog. Every au
    ```
 
 6. Open http://localhost:3000. The admin queue is at `/admin/queue`.
+
+## Design tokens
+
+All visual values live in `src/app/globals.css`: paper and ink colors, hairline, thin and heavy stroke widths, the 8px grid with 64px majors, measurement tick sizes, square radii, and the two font roles. Components use tokens through Tailwind utilities or `var(--token)`. Nothing hardcodes a color, a stroke width, a radius, or a font stack.
+
+Font roles are CSS custom properties:
+
+- `--font-chrome`: monospace. Labels, metadata, nav, tool names, step numbers.
+- `--font-voice`: display face. Headlines.
+
+The faces themselves are loaded in `src/app/layout.tsx` with `next/font` and bound to `--font-chrome-face` and `--font-voice-face`, which is what the font switch swaps later.
+
+## shadcn/ui
+
+Configured in `components.json` with the New York style on Radix. Components live in `src/components/ui/`. Add more with:
+
+```sh
+npx shadcn@latest add <component>
+```
+
+The semantic color names shadcn components use (`background`, `primary`, `muted`, `border`, and so on) are mapped onto the drafting palette in `globals.css`, so added components pick up the idiom without edits.
 
 ## Production build
 
