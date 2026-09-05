@@ -81,6 +81,6 @@ If Turbopack fails locally with `binding to a port: Operation not permitted`, th
 
 ## UX loop
 
-`scripts/ux-loop.sh [base-url]` screenshots every route at phone and desktop widths, records HTTP status and console errors, and writes a dated report under `ux-out/` (gitignored). Needs `agent-browser` on PATH. Run it after each visual change, against the dev server by default or against production with the domain as the argument.
+`scripts/ux-loop.sh [base-url]` screenshots every route at phone and desktop widths, records HTTP status and console errors, and writes a dated report under `ux-out/` (gitignored). Needs `agent-browser` on PATH. Run it after each visual change, against the dev server (`http://localhost:3000`) by default or against production with the domain as the argument.
 
 The build fails on any blog post with invalid frontmatter. That is intentional.

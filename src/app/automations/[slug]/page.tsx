@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import { NotBuilt, Sheet } from "@/components/sheet";
 
-// Real title, description, and canonical come from the record in Phase 5.
+// Stub: any slug renders, so keep it out of the index. Phase 5 replaces this
+// with title, description, and canonical from the record, and unknown slugs
+// call notFound().
 export async function generateMetadata(
   props: PageProps<"/automations/[slug]">,
 ): Promise<Metadata> {
   const { slug } = await props.params;
-  return { title: slug, alternates: { canonical: `/automations/${slug}` } };
+  return { title: slug, robots: { index: false, follow: false } };
 }
 
 export default async function AutomationPage(props: PageProps<"/automations/[slug]">) {

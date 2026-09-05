@@ -34,7 +34,7 @@ export default async function AutomationsIndex(props: PageProps<"/automations">)
           return (
             <span
               key={key}
-              className="border-hairline px-unit py-tick text-chrome text-ink-2"
+              className="border-hairline px-unit py-tick text-chrome text-ink-2 break-all"
             >
               {key}: {match ? match.value : "any"}
             </span>
