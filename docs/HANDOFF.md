@@ -12,7 +12,7 @@ State of the build and every decision made so far, so any session can resume wit
 | Pull request | #2 merged 2026-09-05; `main` = Phases 1-4. New work continues on the branch and lands by PR. |
 | Phases done | 1 (repo init), 2 (app shell and design tokens), 3 (routes stubbed), 4 (Convex schema, functions, admin gate), 5 (content layer and structured data) |
 | Next phase | 6 (flows: submit form, import review, review queue actions) |
-| Vercel | Project `automationsanonymous` under team `lecturesfrom` (slug `lecturesfromog`). Production = Phase 4, deployed via CLI 2026-09-05. Env: `NEXT_PUBLIC_CONVEX_URL` set for production. `ADMIN_PASSWORD` and `ADMIN_SESSION_SECRET` still unset there, so the admin gate rejects every password in production until they are; see open thread 1. |
+| Vercel | Project `automationsanonymous` under team `lecturesfrom` (slug `lecturesfromog`). Production = Phase 4, deployed via CLI 2026-09-05. Production env: `NEXT_PUBLIC_CONVEX_URL`, `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET` all set; admin login verified live 2026-09-05. |
 | Convex | Dev `strong-turtle-110`, prod `exciting-deer-586`, team `lecturesfrom`, project `automationsanonymous`. Functions deployed to both. `ADMIN_SESSION_SECRET` set on both. Prod holds one placeholder automation (`placeholder-smoke-test`) and two placeholder tools (`placeholder-tool`, `other-tool`), all obviously placeholder. |
 | Domain | `automationsanonymous.com` and `www` on Cloudflare, DNS-only CNAMEs to `cname.vercel-dns.com`, both hostnames verified on the Vercel project. Live. |
 | Landing design | Claude Design canvas, Rev C: https://claude.ai/code/artifact/cc15dfe5-8b3f-461e-b874-44fc4d179e2e |
@@ -42,14 +42,11 @@ State of the build and every decision made so far, so any session can resume wit
 
 ### Open threads
 
-1. Vercel production still needs `ADMIN_PASSWORD` and `ADMIN_SESSION_SECRET` (values in `.env.local`), then a redeploy. Until then `/admin` in production shows the login form and rejects every password:
-   `grep '^ADMIN_PASSWORD=' .env.local | cut -d= -f2- | npx vercel env add ADMIN_PASSWORD production --scope lecturesfromog --sensitive`
-   `grep '^ADMIN_SESSION_SECRET=' .env.local | cut -d= -f2- | npx vercel env add ADMIN_SESSION_SECRET production --scope lecturesfromog --sensitive`
-2. Git-triggered Vercel builds. Pushes to `main` now build (env is set) but do not deploy Convex. Generate a production deploy key in the Convex dashboard, set it as `CONVEX_DEPLOY_KEY` on Vercel production, and change the build command to `npx convex deploy --cmd 'npm run build'`. Until then, deploy Convex with `npx convex deploy` from a logged-in machine whenever `convex/` changes.
-3. Type: A (Plex Mono Bold, current), B (Plex Sans Condensed), C (Plex Sans), D (Plex Serif). Pick one.
-4. Cursor interactions for the landing build, proposed in the canvas comment thread: live crosshair, hover-revealed dimensions, ghost cursor replaying an automation, orbitable wireframe hero, scroll-driven drawing. Say which to cut.
-5. A separate "automation and anonymity showcase" brief (Cloudflare Workers, WebAssembly, edge functions) was pasted and parked. It conflicts with this repo's stack rules. Decide: separate project, a blog post here, or dropped.
-6. On-demand revalidation after publish. Public pages revalidate every 300s; a route handler that calls `revalidatePath` from the admin publish flow would make publishes immediate. Phase 6 decision.
+1. Git-triggered Vercel builds. Pushes to `main` now build (env is set) but do not deploy Convex. Generate a production deploy key in the Convex dashboard, set it as `CONVEX_DEPLOY_KEY` on Vercel production, and change the build command to `npx convex deploy --cmd 'npm run build'`. Until then, deploy Convex with `npx convex deploy` from a logged-in machine whenever `convex/` changes.
+2. Type: A (Plex Mono Bold, current), B (Plex Sans Condensed), C (Plex Sans), D (Plex Serif). Pick one.
+3. Cursor interactions for the landing build, proposed in the canvas comment thread: live crosshair, hover-revealed dimensions, ghost cursor replaying an automation, orbitable wireframe hero, scroll-driven drawing. Say which to cut.
+4. A separate "automation and anonymity showcase" brief (Cloudflare Workers, WebAssembly, edge functions) was pasted and parked. It conflicts with this repo's stack rules. Decide: separate project, a blog post here, or dropped.
+5. On-demand revalidation after publish. Public pages revalidate every 300s; a route handler that calls `revalidatePath` from the admin publish flow would make publishes immediate. Phase 6 decision.
 
 ### Rules that must hold in every phase
 
