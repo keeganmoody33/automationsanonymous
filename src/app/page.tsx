@@ -1,20 +1,26 @@
 import type { Metadata } from "next";
+import { fetchQuery } from "convex/nextjs";
+import { api } from "@convex/_generated/api";
+import { Landing } from "@/components/landing/landing";
 
 export const metadata: Metadata = { alternates: { canonical: "/" } };
+export const dynamic = "force-static";
+export const revalidate = 300;
 
-// Placeholder. The landing page is designed separately and lands later.
-// It pulls from the tokens in globals.css; nothing here is final.
-export default function Home() {
-  return (
-    <main className="flex-1 grid-paper">
-      <div className="mx-auto max-w-[1280px] px-unit-2 py-unit-4 md:px-major md:py-major">
-        <p className="text-chrome text-ink-2">Sheet 01 · Placeholder</p>
-        <h1 className="mt-unit text-3xl leading-none md:text-5xl">Automations Anonymous</h1>
-        <p className="mt-unit max-w-[48ch] text-ink">
-          A public directory of working automations, submitted anonymously and
-          reviewed by hand. The landing page is not built yet.
-        </p>
-      </div>
-    </main>
-  );
+/* Distinct unordered tool pairs across published records: the stacks that exist. */
+function countStacks(items: { toolSlugs: string[] }[]): number {
+  const pairs = new Set<string>();
+  for (const a of items) {
+    const t = Array.from(new Set(a.toolSlugs)).sort();
+    for (let i = 0; i < t.length; i++) for (let j = i + 1; j < t.length; j++) pairs.add(`${t[i]}-to-${t[j]}`);
+  }
+  return pairs.size;
+}
+
+export default async function Home() {
+  const [automations, tools] = await Promise.all([
+    fetchQuery(api.public.automations.listPublished, {}),
+    fetchQuery(api.public.tools.list, {}),
+  ]);
+  return <Landing automations={automations} tools={tools} stacks={countStacks(automations)} />;
 }

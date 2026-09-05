@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useState, type ReactNode } from "react";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
 
 // Reactive hooks are for the admin queue only. Public pages use fetchQuery
@@ -13,9 +13,11 @@ export function useAdminToken(): string {
   return token;
 }
 
+// The client is not closed on unmount on purpose: React runs effects twice in
+// development and a closed client cannot be reopened. It is collected with
+// the tree.
 export function ConvexAdminProvider({ token, children }: { token: string; children: ReactNode }) {
   const [client] = useState(() => new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!));
-  useEffect(() => () => void client.close(), [client]);
   return (
     <ConvexProvider client={client}>
       <AdminTokenContext.Provider value={token}>{children}</AdminTokenContext.Provider>

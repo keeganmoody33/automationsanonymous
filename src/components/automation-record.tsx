@@ -1,5 +1,7 @@
 import Link from "next/link";
 import type { PublicAutomation } from "@convex/lib/publicShape";
+import { CopyButton } from "@/components/copy-button";
+import { howTo } from "@/lib/schema-org";
 
 /*
   The canonical automation page body. The summary is rendered by Sheet as
@@ -7,18 +9,22 @@ import type { PublicAutomation } from "@convex/lib/publicShape";
   it. The payload is shown verbatim in a block, never paraphrased.
 */
 
-function Section({ label, children }: { label: string; children: React.ReactNode }) {
+function Section({ label, children, className = "", action }: { label: string; children: React.ReactNode; className?: string; action?: React.ReactNode }) {
   return (
-    <section className="border-t-hairline py-unit-2">
-      <h2 className="text-chrome text-ink-2">{label}</h2>
+    <section className={`border-t-hairline py-unit-2 ${className}`}>
+      <div className="flex items-baseline justify-between">
+        <h2 className="text-chrome text-ink-2">{label}</h2>
+        {action}
+      </div>
       <div className="mt-unit">{children}</div>
     </section>
   );
 }
 
 export function AutomationRecord({ a }: { a: PublicAutomation }) {
+  const ld = JSON.stringify(howTo(a), null, 2);
   return (
-    <article>
+    <article className="mode-dense">
       <dl className="flex flex-wrap gap-x-unit-4 gap-y-unit pb-unit-2 text-chrome text-ink-2">
         <div>
           <dt className="inline">Difficulty: </dt>
@@ -46,12 +52,12 @@ export function AutomationRecord({ a }: { a: PublicAutomation }) {
       </dl>
 
       {a.problem ? (
-        <Section label="Problem">
+        <Section label="Problem" className="human-only">
           <p className="max-w-[64ch]">{a.problem}</p>
         </Section>
       ) : null}
       {a.trigger ? (
-        <Section label="Trigger">
+        <Section label="Trigger" className="human-only">
           <p className="max-w-[64ch]">{a.trigger}</p>
         </Section>
       ) : null}
@@ -98,7 +104,7 @@ export function AutomationRecord({ a }: { a: PublicAutomation }) {
       </Section>
 
       {a.payload ? (
-        <Section label={`Payload · ${a.payload.format}`}>
+        <Section label={`Payload · ${a.payload.format}`} action={<CopyButton text={a.payload.content} />}>
           <pre className="overflow-x-auto border-hairline bg-paper-deep p-unit-2 text-[0.75rem] leading-relaxed">
             <code>{a.payload.content}</code>
           </pre>
@@ -126,7 +132,7 @@ export function AutomationRecord({ a }: { a: PublicAutomation }) {
       ) : null}
 
       {a.sourceUrl ? (
-        <Section label="Origin">
+        <Section label="Origin" className="human-only">
           <p className="text-chrome">
             <a href={a.sourceUrl} rel="noopener noreferrer" className="text-ink-2 hover:text-mark">
               {a.origin} · source
@@ -134,6 +140,12 @@ export function AutomationRecord({ a }: { a: PublicAutomation }) {
           </p>
         </Section>
       ) : null}
+      {/* Agent mode: the structured data, raw and copyable. Same HTML in both modes; CSS decides. */}
+      <Section label="JSON-LD · HowTo" className="agent-only" action={<CopyButton text={ld} />}>
+        <pre className="overflow-x-auto border-thin border-mark bg-paper-deep p-unit-2 text-[0.75rem] leading-relaxed">
+          <code>{ld}</code>
+        </pre>
+      </Section>
     </article>
   );
 }

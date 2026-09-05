@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { NotBuilt, Sheet } from "@/components/sheet";
+import { Sheet } from "@/components/sheet";
+import { SubmitForm } from "@/components/submit-form";
 
 export const metadata: Metadata = {
   title: "Submit",
@@ -13,9 +14,9 @@ export default function SubmitPage() {
       number="10"
       route="/submit"
       title="Submit"
-      summary="Submit an automation anonymously. No account, no login, no attribution."
+      summary="Submit a working automation anonymously. No account, no login, no attribution. A person reviews it before it is published."
     >
-      <NotBuilt phase={6} />
+      <SubmitForm />
     </Sheet>
   );
 }

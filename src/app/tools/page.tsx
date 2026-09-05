@@ -3,6 +3,7 @@ import Link from "next/link";
 import { fetchQuery } from "convex/nextjs";
 import { api } from "@convex/_generated/api";
 import { Empty, Sheet } from "@/components/sheet";
+import { JsonLd, itemList } from "@/lib/schema-org";
 
 export const dynamic = "force-static";
 export const revalidate = 300;
@@ -22,6 +23,7 @@ export default async function ToolsIndex() {
       title="Tools"
       summary="Every tool referenced by a published automation, with the automations that use it."
     >
+      <JsonLd data={itemList("Tools", "/tools", tools.map((t) => ({ name: t.name, path: `/tools/${t.slug}` })))} />
       {tools.length === 0 ? (
         <Empty what="Tools" />
       ) : (
