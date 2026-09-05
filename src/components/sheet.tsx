@@ -20,17 +20,19 @@ type SheetProps = {
 export function Sheet({ number, route, title, summary, children }: SheetProps) {
   return (
     <main className="flex-1 grid-paper">
-      <div className="mx-auto max-w-[1280px] px-major py-major">
+      <div className="mx-auto max-w-[1280px] px-unit-2 py-unit-4 md:px-major md:py-major">
         <header className="border-b-hairline pb-unit">
-          <p className="text-chrome text-ink-2">
+          <p className="text-chrome text-ink-2 break-all">
             Sheet {number} · {route}
           </p>
-          <h1 className="mt-unit text-5xl leading-none">{title}</h1>
+          <h1 className="mt-unit text-3xl leading-none break-words md:text-5xl">
+            {title}
+          </h1>
           {summary ? (
             <p className="mt-unit max-w-[48ch] text-ink">{summary}</p>
           ) : null}
         </header>
-        {children ? <div className="mt-major">{children}</div> : null}
+        {children ? <div className="mt-unit-4 md:mt-major">{children}</div> : null}
       </div>
     </main>
   );

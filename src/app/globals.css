@@ -36,7 +36,14 @@
   /* measurement ticks */
   --tick: 6px;
   --tick-major: 10px;
+}
 
+/* A hairline is one device pixel. On a 1x display 0.5px rounds away and the
+   grid and rules vanish, so the token steps up to 1px there. */
+@media (max-resolution: 1.99dppx) {
+  :root {
+    --stroke-hairline: 1px;
+  }
 }
 
 /* Font roles. The faces are loaded in the root layout via next/font and
@@ -91,8 +98,10 @@
   --radius-lg: 0px;
   --radius-xl: 0px;
 
-  /* grid-derived spacing: p-unit, gap-major */
+  /* grid-derived spacing: p-unit, p-unit-2, p-unit-4, gap-major */
   --spacing-unit: var(--grid-unit);
+  --spacing-unit-2: calc(var(--grid-unit) * 2);
+  --spacing-unit-4: calc(var(--grid-unit) * 4);
   --spacing-major: var(--grid-major);
   --spacing-tick: var(--tick);
   --spacing-tick-major: var(--tick-major);

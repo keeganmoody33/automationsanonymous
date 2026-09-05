@@ -40,3 +40,6 @@ Thumbs.db
 
 # vercel
 .vercel
+
+# ux loop output (scripts/ux-loop.sh)
+ux-out/

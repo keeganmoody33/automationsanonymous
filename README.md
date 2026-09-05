@@ -11,7 +11,7 @@ A public directory of real, working automations plus an editorial blog. Every au
 
 ## Setup
 
-> Build status: Phase 2 of 8 (app shell and design tokens). Routes, Convex, content, and flows land in later phases.
+> Build status: Phase 3 of 8 (routes stubbed). Convex, content, and flows land in later phases. Live at https://automationsanonymous.com.
 
 1. Clone the repo and install dependencies:
 
@@ -76,5 +76,11 @@ The semantic color names shadcn components use (`background`, `primary`, `muted`
 npm run build
 npm start
 ```
+
+If Turbopack fails locally with `binding to a port: Operation not permitted`, the machine is refusing its worker a socket. Use `next build --webpack` and `next dev --webpack` there; Vercel builds with Turbopack as normal.
+
+## UX loop
+
+`scripts/ux-loop.sh [base-url]` screenshots every route at phone and desktop widths, records HTTP status and console errors, and writes a dated report under `ux-out/` (gitignored). Needs `agent-browser` on PATH. Run it after each visual change, against the dev server by default or against production with the domain as the argument.
 
 The build fails on any blog post with invalid frontmatter. That is intentional.

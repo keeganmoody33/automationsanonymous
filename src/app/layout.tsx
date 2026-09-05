@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
+import { SiteNav } from "@/components/site-nav";
 
 // Font faces are bound to *-face variables. Components never use these
 // directly; they use --font-chrome and --font-voice from globals.css.
@@ -27,13 +28,15 @@ export const metadata: Metadata = {
   },
   description:
     "A public directory of working automations, each documented as a structured record with trigger, steps, prerequisites, failure modes, and the runnable payload. Submitted anonymously.",
-  alternates: { canonical: "/" },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${chrome.variable} ${voice.variable} h-full`}>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <SiteNav />
+        {children}
+      </body>
     </html>
   );
 }
