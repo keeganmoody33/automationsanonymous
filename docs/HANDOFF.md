@@ -10,13 +10,13 @@ State of the build and every decision made so far, so any session can resume wit
 | --- | --- |
 | Branch | `claude/automationsanonymous-repo-build-1lnge8` |
 | Pull request | #2 merged 2026-09-05; `main` = Phases 1-4. New work continues on the branch and lands by PR. |
-| Phases done | 1 (repo init), 2 (app shell and design tokens), 3 (routes stubbed), 4 (Convex schema, functions, admin gate), 5 (content layer and structured data) |
-| Next phase | 6 (flows: submit form, import review, review queue actions) |
+| Phases done | 1 (repo init), 2 (app shell and design tokens), 3 (routes stubbed), 4 (Convex schema, functions, admin gate), 5 (content layer and structured data), 6 (flows) |
+| Next phase | 7 (switches: ModeContext human/agent, font registry) |
 | Vercel | Project `automationsanonymous` under team `lecturesfrom` (slug `lecturesfromog`). Production = Phase 4, deployed via CLI 2026-09-05. Production env: `NEXT_PUBLIC_CONVEX_URL`, `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET` all set; admin login verified live 2026-09-05. |
 | Convex | Dev `strong-turtle-110`, prod `exciting-deer-586`, team `lecturesfrom`, project `automationsanonymous`. Functions deployed to both. `ADMIN_SESSION_SECRET` set on both. Prod holds one placeholder automation (`placeholder-smoke-test`) and two placeholder tools (`placeholder-tool`, `other-tool`), all obviously placeholder. |
 | Domain | `automationsanonymous.com` and `www` on Cloudflare, DNS-only CNAMEs to `cname.vercel-dns.com`, both hostnames verified on the Vercel project. Live. |
 | Landing design | Claude Design canvas, Rev C: https://claude.ai/code/artifact/cc15dfe5-8b3f-461e-b874-44fc4d179e2e |
-| QA | `scripts/ux-loop.sh [base-url]`: screenshots every route at 390 and 1280, checks HTTP status against expectation, canonical, robots (admin must be noindex), description, console errors. Exit 2 on any failed check. |
+| QA | `scripts/e2e-flows.sh` drives submit, review, approve, publish, import, promote, reject in a browser against dev. `scripts/ux-loop.sh [base-url]`: screenshots every route at 390 and 1280, checks HTTP status against expectation, canonical, robots (admin must be noindex), description, console errors. Exit 2 on any failed check. |
 
 ### Decisions made on top of the brief
 
@@ -38,6 +38,11 @@ State of the build and every decision made so far, so any session can resume wit
 - JSON-LD only through `src/lib/schema-org.tsx` builders and `<JsonLd>`: HowTo on automation pages (`totalTime` from `timeSavedMinutes`), Article on posts (publisher is the site, no author), ItemList on tool, stack, and tools index pages.
 - `sitemap.ts`, `robots.ts` (disallow `/admin`), `public/llms.txt` static, `llms-full.txt` route generated from published records with payloads verbatim; sitemap and llms-full are force-static with 300s revalidate.
 - Blog body renders in the default body face (Plex Mono 400) for now, not `--font-voice`, because voice is loaded at weight 700 only. The brief says voice for blog body; that waits on the type decision (open thread 3).
+- Forms are text: one step per line as `action | tool-slug | detail`, one list item per line, comma-separated tool slugs. `src/lib/automation-form.ts` owns the zod schema and the mapping in both directions, shared by `/submit` and the admin editor.
+- Publish runs as a server action (`publishAutomation` in `src/app/admin/actions.ts`) so it can `revalidatePath` the index, the new page, the tool pages, the sitemap, and llms-full in the same request. Everything else in the editor is a reactive Convex mutation from the client. Publishes are live immediately; the 300s ISR is the fallback.
+- Turnstile is a hook point, not wired: `src/lib/turnstile.ts` verifies only when `TURNSTILE_SECRET_KEY` is set, and the form renders the mount div only when `NEXT_PUBLIC_TURNSTILE_SITE_KEY` is set. The widget script is not loaded.
+- Published records stay editable (all fields except slug, which the mutation rejects). Edits go live on the next revalidation.
+- The Convex client in the admin provider is not closed on unmount: React runs effects twice in development and a closed `ConvexReactClient` cannot be reopened.
 - Two placeholder records live in the Convex dev deployment from the smoke test: automation `placeholder-smoke-test` (published) and tool `placeholder-tool`. Obviously placeholder; delete from the dashboard when real content lands.
 
 ### Open threads
@@ -46,7 +51,6 @@ State of the build and every decision made so far, so any session can resume wit
 2. Type: A (Plex Mono Bold, current), B (Plex Sans Condensed), C (Plex Sans), D (Plex Serif). Pick one.
 3. Cursor interactions for the landing build, proposed in the canvas comment thread: live crosshair, hover-revealed dimensions, ghost cursor replaying an automation, orbitable wireframe hero, scroll-driven drawing. Say which to cut.
 4. A separate "automation and anonymity showcase" brief (Cloudflare Workers, WebAssembly, edge functions) was pasted and parked. It conflicts with this repo's stack rules. Decide: separate project, a blog post here, or dropped.
-5. On-demand revalidation after publish. Public pages revalidate every 300s; a route handler that calls `revalidatePath` from the admin publish flow would make publishes immediate. Phase 6 decision.
 
 ### Rules that must hold in every phase
 

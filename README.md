@@ -11,7 +11,7 @@ A public directory of real, working automations plus an editorial blog. Every au
 
 ## Setup
 
-> Build status: Phase 5 of 8 (MDX blog with validated frontmatter, JSON-LD builders, sitemap, robots, llms.txt). Flows, switches, and instructions land in later phases. Live at https://automationsanonymous.com.
+> Build status: Phase 6 of 8 (submit form, import review, review queue with approve, reject, publish). Switches and instructions land in later phases. Live at https://automationsanonymous.com.
 
 1. Clone the repo and install dependencies:
 
@@ -82,5 +82,7 @@ If Turbopack fails locally with `binding to a port: Operation not permitted`, th
 ## UX loop
 
 `scripts/ux-loop.sh [base-url]` screenshots every route at phone and desktop widths, records HTTP status and console errors, and writes a dated report under `ux-out/` (gitignored). Needs `agent-browser` on PATH. Run it after each visual change, against the dev server (`http://localhost:3000`) by default or against production with the domain as the argument.
+
+`scripts/e2e-flows.sh` drives the submit, review, publish, import, and reject flows in a browser against a local dev server and the Convex dev deployment. It creates placeholder records in dev; never point it at production.
 
 The build fails on any blog post with invalid frontmatter. That is intentional.
