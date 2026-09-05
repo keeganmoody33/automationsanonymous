@@ -17,9 +17,9 @@ Backend for automationsanonymous.com. Convex 1.45, default (V8) runtime everywhe
 | `public/tools.ts` | `list`, `getBySlug`, `listCategories`. |
 | `public/stacks.ts` | `listByStack`, `resolve` (one-query stack page: both tools plus their shared automations). |
 | `submit.ts` | `submit`: the only public write. |
-| `admin/automations.ts` | `listByStatus`, `get`, `update`, `approve`, `reject`, `promoteRaw`, `publish`. |
+| `admin/automations.ts` | `listByStatus`, `get`, `createAuthored`, `remove`, `update`, `approve`, `reject`, `promoteRaw`, `publish`. |
 | `admin/imports.ts` | `importAutomations` (bulk, max 200, lands in `raw`). |
-| `admin/tools.ts` | `upsert`, `list`. |
+| `admin/tools.ts` | `upsert`, `remove`, `list`. |
 
 Public pages read these with `fetchQuery` from `convex/nextjs` in server components. Reactive hooks are for the admin queue only.
 
@@ -51,3 +51,6 @@ submitted ->        pending -> approved -> published
 - `publish` assigns the permanent slug (`^[a-z0-9]+(-[a-z0-9]+)*$`, unique via `by_slug`) and sets `publishedAt = Date.now()`.
 - Once a record has a slug no function changes it. `update` rejects `slug`; `publish` rejects a slug that differs from one already set.
 - No identity anywhere: no author fields, no user table, no `ctx.auth`.
+- `createAuthored` writes `origin: "authored"`, `status: "pending"`, so in-house content passes through the same review gate as everything else.
+- `tools.remove` refuses while a published automation still lists the slug in `toolSlugs`, since those render as links to `/tools/<slug>`. Unpublished records do not block it.
+- `remove` is a hard delete with no undo. Deleting a *published* record retires a permanent URL and frees its slug for reuse, the one way the permanent-slug rule can be broken; use it for placeholders and mistakes, not as an editorial unpublish.

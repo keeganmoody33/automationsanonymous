@@ -1,0 +1,390 @@
+{
+ "records": [
+  {
+   "slug": "back-up-one-folder-every-night",
+   "title": "Back up one folder every night and keep two weeks",
+   "summary": "A nightly cron job archives one folder to a dated tar.gz and deletes archives older than fourteen days, so a restore is always a single file away.",
+   "problem": "Backups that depend on remembering to run them are not backups. The folder that matters is usually one folder, and copying it by hand lasts about a week before it stops happening.",
+   "trigger": "Cron, every night at 02:00 local time.",
+   "steps": [
+    {
+     "order": 1,
+     "action": "Save the script as backup-folder.sh and make it executable",
+     "toolSlug": "bash",
+     "detail": "chmod +x backup-folder.sh. Edit SOURCE and DEST at the top; nothing else needs changing."
+    },
+    {
+     "order": 2,
+     "action": "Run it once by hand and confirm the archive opens",
+     "toolSlug": "tar",
+     "detail": "tar -tzf ~/Backups/Documents-YYYY-MM-DD.tar.gz lists the contents. If that fails, stop here and fix it before scheduling anything."
+    },
+    {
+     "order": 3,
+     "action": "Add the cron line",
+     "toolSlug": "cron",
+     "detail": "crontab -e, then: 0 2 * * * $HOME/bin/backup-folder.sh >> $HOME/.backup.log 2>&1"
+    },
+    {
+     "order": 4,
+     "action": "Check the log the next morning",
+     "detail": "tail ~/.backup.log. One line per run, with the path it wrote."
+    }
+   ],
+   "prerequisites": [
+    "A machine that is awake at the scheduled time. A laptop asleep at 02:00 skips the run.",
+    "Enough free space for fourteen compressed copies of the folder.",
+    "tar and cron, both present by default on macOS and Linux."
+   ],
+   "failureModes": [
+    "The disk fills and tar writes a truncated archive. The script does not check free space, so watch the log and the archive sizes.",
+    "The source folder is renamed or moved, tar exits non-zero, and set -e stops the run. Nothing is deleted, but nothing is backed up either.",
+    "The archive sits on the same disk as the source, so one dead drive loses both. Point DEST at an external volume or a synced folder.",
+    "cron runs with a minimal environment. Use absolute paths, and test the way cron will see it: env -i /bin/bash $HOME/bin/backup-folder.sh"
+   ],
+   "payload": {
+    "format": "sh",
+    "content": "#!/usr/bin/env bash\n# Nightly archive of one folder. Keeps the last 14 days, deletes the rest.\nset -euo pipefail\n\nSOURCE=\"$HOME/Documents\"\nDEST=\"$HOME/Backups\"\nKEEP_DAYS=14\n\nmkdir -p \"$DEST\"\nNAME=\"$(basename \"$SOURCE\")\"\nARCHIVE=\"$DEST/$NAME-$(date +%Y-%m-%d).tar.gz\"\n\ntar --create --gzip --file \"$ARCHIVE\" --directory \"$(dirname \"$SOURCE\")\" \"$NAME\"\nfind \"$DEST\" -name \"$NAME-*.tar.gz\" -type f -mtime +\"$KEEP_DAYS\" -delete\n\necho \"$(date +%Y-%m-%dT%H:%M:%S) wrote $ARCHIVE\""
+   },
+   "toolSlugs": [
+    "cron",
+    "bash",
+    "tar"
+   ],
+   "difficulty": "beginner"
+  },
+  {
+   "slug": "tell-a-chat-channel-when-a-site-goes-down",
+   "title": "Tell a chat channel when a site goes down, once",
+   "summary": "A five minute cron check posts to a chat webhook only when a site changes state, so an outage announces itself once and the recovery announces itself once.",
+   "problem": "Uptime checks that post on every failed poll turn a two hour outage into twenty four identical messages, and people mute the channel. The useful signal is the transition, not the poll.",
+   "trigger": "Cron, every five minutes.",
+   "steps": [
+    {
+     "order": 1,
+     "action": "Create an incoming webhook in the chat tool and copy the URL",
+     "toolSlug": "slack",
+     "detail": "Any service that accepts a JSON body with a text field works the same way."
+    },
+    {
+     "order": 2,
+     "action": "Put the webhook URL in the environment, not in the script",
+     "detail": "The script reads SLACK_WEBHOOK_URL and exits with a message if it is missing."
+    },
+    {
+     "order": 3,
+     "action": "Set URL at the top and run it twice by hand",
+     "toolSlug": "curl",
+     "detail": "The first run records the state and stays quiet. Point it at a URL that fails to watch the alert fire."
+    },
+    {
+     "order": 4,
+     "action": "Add the cron line",
+     "toolSlug": "cron",
+     "detail": "*/5 * * * * SLACK_WEBHOOK_URL=https://... $HOME/bin/uptime.sh"
+    }
+   ],
+   "prerequisites": [
+    "A webhook URL from the chat tool.",
+    "curl, present by default on macOS and most Linux images.",
+    "A writable /tmp for the state file."
+   ],
+   "failureModes": [
+    "The checking machine loses its own network. Everything looks down and the alert cannot be sent anyway. Run this somewhere other than the machine you are watching.",
+    "/tmp is cleared on reboot, the state resets to up, and a still down site alerts a second time. Move STATE_FILE somewhere persistent if that matters.",
+    "The site returns 200 with an error page. This checks the status code only.",
+    "A redirect returns 301 and reads as down. Add -L to the curl call if redirects are expected."
+   ],
+   "payload": {
+    "format": "sh",
+    "content": "#!/usr/bin/env bash\n# Check one URL. Post to chat only when the state changes, so a long\n# outage does not repeat the same message every five minutes.\nset -euo pipefail\n\nURL=\"https://example.com\"\nWEBHOOK=\"${SLACK_WEBHOOK_URL:?set SLACK_WEBHOOK_URL in the environment}\"\nSTATE_FILE=\"/tmp/uptime-$(printf '%s' \"$URL\" | cksum | cut -d' ' -f1).state\"\n\ncode=\"$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 \"$URL\" || echo 000)\"\nif [ \"$code\" = \"200\" ]; then now=\"up\"; else now=\"down\"; fi\n\nwas=\"$(cat \"$STATE_FILE\" 2>/dev/null || echo up)\"\nprintf '%s' \"$now\" > \"$STATE_FILE\"\n\nif [ \"$now\" = \"$was\" ]; then\n  exit 0\nfi\n\nif [ \"$now\" = \"down\" ]; then\n  text=\"$URL is down. HTTP $code.\"\nelse\n  text=\"$URL is back. HTTP $code.\"\nfi\n\ncurl -s -X POST -H 'Content-Type: application/json' \\\n  --data \"$(printf '{\"text\":\"%s\"}' \"$text\")\" \"$WEBHOOK\" > /dev/null"
+   },
+   "toolSlugs": [
+    "cron",
+    "bash",
+    "curl",
+    "slack"
+   ],
+   "difficulty": "beginner"
+  },
+  {
+   "slug": "file-every-receipt-out-of-the-inbox",
+   "title": "File every receipt out of the inbox automatically",
+   "summary": "One Gmail filter labels anything that looks like a receipt or an invoice and archives it, so purchases stay searchable in one place and out of the inbox.",
+   "problem": "Receipts arrive constantly, are read once, and are needed twice a year. Left in the inbox they are noise. Deleted, they are gone at tax time.",
+   "trigger": "Every incoming message, evaluated by Gmail on arrival.",
+   "steps": [
+    {
+     "order": 1,
+     "action": "Create a label called Receipts",
+     "toolSlug": "gmail"
+    },
+    {
+     "order": 2,
+     "action": "Import the filter",
+     "toolSlug": "gmail",
+     "detail": "Settings > Filters and blocked addresses > Import filters, upload the file below, then select the filter and create it."
+    },
+    {
+     "order": 3,
+     "action": "Apply it to existing mail once",
+     "toolSlug": "gmail",
+     "detail": "Search the same terms, select all, apply the label and archive. A filter only sees new mail."
+    },
+    {
+     "order": 4,
+     "action": "Watch it for a week and tighten the terms",
+     "detail": "Anything wrongly filed tells you which word is too broad. no-reply is the usual culprit."
+    }
+   ],
+   "prerequisites": [
+    "A Gmail or Google Workspace account.",
+    "Five minutes to read what the search matches before turning it on."
+   ],
+   "failureModes": [
+    "The word invoice appears in a thread that matters and it is archived unread. Search label:Receipts to find it, then narrow the terms.",
+    "Receipts that use none of these words are missed. Add senders as you notice them.",
+    "The filter does not touch mail that arrived before it existed. Step 3 exists for that reason.",
+    "shouldNeverSpam keeps these out of spam, which also means a fake receipt stays in the inbox. Read before clicking, always."
+   ],
+   "payload": {
+    "format": "xml",
+    "content": "<?xml version='1.0' encoding='UTF-8'?>\n<feed xmlns='http://www.w3.org/2005/Atom' xmlns:apps='http://schemas.google.com/apps/2006'>\n  <title>Mail Filters</title>\n  <entry>\n    <category term='filter'></category>\n    <title>Receipts</title>\n    <apps:property name='hasTheWord' value='subject:(receipt OR invoice OR &quot;order confirmation&quot; OR &quot;your order&quot;) OR from:(billing OR receipts OR invoices OR no-reply)'/>\n    <apps:property name='label' value='Receipts'/>\n    <apps:property name='shouldArchive' value='true'/>\n    <apps:property name='shouldNeverSpam' value='true'/>\n    <apps:property name='sizeOperator' value='s_sl'/>\n    <apps:property name='sizeUnit' value='s_smb'/>\n  </entry>\n</feed>"
+   },
+   "toolSlugs": [
+    "gmail"
+   ],
+   "difficulty": "beginner"
+  },
+  {
+   "slug": "build-test-and-deploy-on-every-push",
+   "title": "Build, test and deploy on every push to main",
+   "summary": "A GitHub Actions workflow installs, tests and builds on every push to main and then runs one publish step, cancelling an older run when a newer push arrives.",
+   "problem": "Deploying by hand from a laptop means the deployed thing was built on that laptop, with whatever happened to be installed that day, and two people deploying at once race each other.",
+   "trigger": "A push to the main branch.",
+   "steps": [
+    {
+     "order": 1,
+     "action": "Save the workflow at .github/workflows/deploy.yml",
+     "toolSlug": "github-actions"
+    },
+    {
+     "order": 2,
+     "action": "Put the deploy credential in repository secrets as DEPLOY_TOKEN",
+     "toolSlug": "github-actions",
+     "detail": "Settings > Secrets and variables > Actions. Never in the workflow file."
+    },
+    {
+     "order": 3,
+     "action": "Write scripts/publish.sh so it is the only step that touches production",
+     "detail": "Keeping the publish in one script means it can still be run by hand in an emergency."
+    },
+    {
+     "order": 4,
+     "action": "Push a trivial change and watch the run",
+     "toolSlug": "github-actions",
+     "detail": "The Actions tab shows every step. A green run that skipped the tests is not a green run: check that npm test actually ran."
+    }
+   ],
+   "prerequisites": [
+    "A repository on GitHub with Actions enabled.",
+    "A package.json with a build script. Tests are optional: --if-present skips cleanly when there are none.",
+    "A deploy credential that can be revoked on its own without rotating anything else."
+   ],
+   "failureModes": [
+    "cancel-in-progress cancels a run that was already mid publish. Make publish.sh safe to run twice, or drop the concurrency block.",
+    "npm ci fails when package-lock.json is out of date with package.json. Commit the lockfile.",
+    "The build passes on the runner and fails on a developer machine, or the reverse. The runner is the source of truth from now on.",
+    "A secret is only masked in logs when it matches exactly. Do not echo credentials, even partially."
+   ],
+   "payload": {
+    "format": "yaml",
+    "content": "name: Deploy\non:\n  push:\n    branches: [main]\n\n# One deploy at a time. A newer push cancels an older run.\nconcurrency:\n  group: deploy\n  cancel-in-progress: true\n\njobs:\n  deploy:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 22\n          cache: npm\n      - run: npm ci\n      - run: npm test --if-present\n      - run: npm run build\n      - name: Publish\n        run: ./scripts/publish.sh\n        env:\n          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}"
+   },
+   "toolSlugs": [
+    "github-actions",
+    "npm"
+   ],
+   "difficulty": "intermediate"
+  },
+  {
+   "slug": "reclaim-disk-space-from-docker-weekly",
+   "title": "Reclaim disk space from Docker every Sunday",
+   "summary": "A weekly cron line prunes Docker images, containers, networks and build cache untouched for seven days, and deliberately leaves volumes alone so data survives.",
+   "problem": "Docker keeps every layer it has ever pulled. On a build machine that is tens of gigabytes within a month, and the first symptom is a build failing on a full disk at an inconvenient hour.",
+   "trigger": "Cron, Sundays at 04:00.",
+   "steps": [
+    {
+     "order": 1,
+     "action": "See what would go first",
+     "toolSlug": "docker",
+     "detail": "docker system df shows reclaimable space per category."
+    },
+    {
+     "order": 2,
+     "action": "Add the line to root's crontab",
+     "toolSlug": "cron",
+     "detail": "sudo crontab -e. Talking to the docker socket needs root or membership of the docker group."
+    },
+    {
+     "order": 3,
+     "action": "Check the log after the first Sunday",
+     "detail": "tail /var/log/docker-prune.log shows what was deleted and how much space came back."
+    }
+   ],
+   "prerequisites": [
+    "Docker installed, and permission to talk to the daemon.",
+    "A writable /var/log, or a different path in the line.",
+    "Nothing on the machine that depends on an image it cannot pull again."
+   ],
+   "failureModes": [
+    "--all removes images with no running container, including one a stopped container needs at its next start. Drop --all to keep tagged images.",
+    "An air gapped machine cannot re-pull what was pruned. Do not run this there.",
+    "The until filter is relative to image creation, not last use. An old base image in daily use is still removed and pulled again.",
+    "Volumes are untouched by design. Adding --volumes to this line deletes database data."
+   ],
+   "payload": {
+    "format": "cron",
+    "content": "# Sunday 04:00. Removes images, containers, networks and build cache\n# untouched for a week. Volumes are left alone on purpose.\n0 4 * * 0 /usr/bin/docker system prune --all --force --filter \"until=168h\" >> /var/log/docker-prune.log 2>&1"
+   },
+   "toolSlugs": [
+    "cron",
+    "docker"
+   ],
+   "difficulty": "intermediate"
+  },
+  {
+   "slug": "post-every-form-response-to-chat",
+   "title": "Post every form response to a chat channel",
+   "summary": "An Apps Script trigger on the responses spreadsheet posts each new form submission to a chat channel as a readable message, so the people who act on it never open the sheet.",
+   "problem": "A form writes a row and nobody sees it. The team either checks the sheet out of habit or finds out days later that someone was waiting on them.",
+   "trigger": "A form submission, through the spreadsheet's on form submit trigger.",
+   "steps": [
+    {
+     "order": 1,
+     "action": "Open the responses spreadsheet, then Extensions > Apps Script",
+     "toolSlug": "google-apps-script"
+    },
+    {
+     "order": 2,
+     "action": "Paste the script and save",
+     "toolSlug": "google-apps-script"
+    },
+    {
+     "order": 3,
+     "action": "Add SLACK_WEBHOOK_URL under Project Settings > Script properties",
+     "toolSlug": "slack",
+     "detail": "Script properties keep the webhook out of the code and out of version control."
+    },
+    {
+     "order": 4,
+     "action": "Add the trigger",
+     "toolSlug": "google-apps-script",
+     "detail": "Triggers > Add trigger > function onFormSubmit > event source From spreadsheet > event type On form submit. Authorize when prompted."
+    },
+    {
+     "order": 5,
+     "action": "Submit the form once as a test",
+     "toolSlug": "google-forms",
+     "detail": "Executions in the Apps Script sidebar shows the run and any error."
+    }
+   ],
+   "prerequisites": [
+    "A Google Form whose responses go to a spreadsheet.",
+    "An incoming webhook URL from the chat tool.",
+    "Permission to authorize a script on the account that owns the form."
+   ],
+   "failureModes": [
+    "The trigger is attached to the form instead of the spreadsheet and e.namedValues is empty. It must be From spreadsheet.",
+    "A long free text answer makes the message unreadable in chat. Post the questions that matter rather than all of them.",
+    "The webhook is revoked and every run fails quietly. muteHttpExceptions keeps the row from being lost, so check Executions occasionally.",
+    "Apps Script has daily quotas on UrlFetchApp. A form taking thousands of responses a day needs a different approach."
+   ],
+   "payload": {
+    "format": "javascript",
+    "content": "/**\n * Google Apps Script, bound to the form's responses spreadsheet.\n * Extensions > Apps Script, paste this, then add a trigger:\n * Triggers > Add trigger > onFormSubmit > From spreadsheet > On form submit.\n * Put the webhook in Project Settings > Script properties as SLACK_WEBHOOK_URL.\n */\nfunction onFormSubmit(e) {\n  const webhook = PropertiesService.getScriptProperties().getProperty('SLACK_WEBHOOK_URL');\n  if (!webhook) throw new Error('Script property SLACK_WEBHOOK_URL is not set');\n\n  const answers = e.namedValues;\n  const lines = Object.keys(answers)\n    .filter(function (question) { return String(answers[question]).trim() !== ''; })\n    .map(function (question) { return '*' + question + '*: ' + answers[question]; });\n\n  const body = {\n    text: 'New form response',\n    blocks: [{ type: 'section', text: { type: 'mrkdwn', text: lines.join('\\n') } }]\n  };\n\n  UrlFetchApp.fetch(webhook, {\n    method: 'post',\n    contentType: 'application/json',\n    payload: JSON.stringify(body),\n    muteHttpExceptions: true\n  });\n}"
+   },
+   "toolSlugs": [
+    "google-forms",
+    "google-sheets",
+    "google-apps-script",
+    "slack"
+   ],
+   "difficulty": "beginner"
+  }
+ ],
+ "tools": [
+  {
+   "slug": "cron",
+   "name": "cron",
+   "category": "scheduling",
+   "website": "https://man7.org/linux/man-pages/man5/crontab.5.html"
+  },
+  {
+   "slug": "bash",
+   "name": "Bash",
+   "category": "shell",
+   "website": "https://www.gnu.org/software/bash/"
+  },
+  {
+   "slug": "tar",
+   "name": "tar",
+   "category": "files",
+   "website": "https://www.gnu.org/software/tar/"
+  },
+  {
+   "slug": "curl",
+   "name": "curl",
+   "category": "http",
+   "website": "https://curl.se/"
+  },
+  {
+   "slug": "slack",
+   "name": "Slack",
+   "category": "chat",
+   "website": "https://slack.com/"
+  },
+  {
+   "slug": "gmail",
+   "name": "Gmail",
+   "category": "email",
+   "website": "https://mail.google.com/"
+  },
+  {
+   "slug": "github-actions",
+   "name": "GitHub Actions",
+   "category": "ci",
+   "website": "https://github.com/features/actions"
+  },
+  {
+   "slug": "npm",
+   "name": "npm",
+   "category": "packages",
+   "website": "https://www.npmjs.com/"
+  },
+  {
+   "slug": "docker",
+   "name": "Docker",
+   "category": "containers",
+   "website": "https://www.docker.com/"
+  },
+  {
+   "slug": "google-forms",
+   "name": "Google Forms",
+   "category": "forms",
+   "website": "https://forms.google.com/"
+  },
+  {
+   "slug": "google-sheets",
+   "name": "Google Sheets",
+   "category": "spreadsheets",
+   "website": "https://sheets.google.com/"
+  },
+  {
+   "slug": "google-apps-script",
+   "name": "Google Apps Script",
+   "category": "scripting",
+   "website": "https://script.google.com/"
+  }
+ ]
+}

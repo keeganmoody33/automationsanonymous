@@ -1,0 +1,47 @@
+---
+title: "How to pick your first automation"
+description: "Most first automations fail because they are too ambitious. Pick something you already do by hand, that you have done at least three times, and that you would notice going wrong."
+date: "2026-09-05"
+---
+
+The usual advice is to automate the boring parts of your job. That is true and useless. It does not tell you which boring part, and picking the wrong one is how people conclude that automation is not for them.
+
+Here is a narrower rule. Your first automation should be something you have already done by hand at least three times, that takes under ten minutes each time, and that you would notice if it silently stopped working.
+
+Each of those three conditions is doing real work.
+
+## You have done it by hand at least three times
+
+If you have not done it by hand, you do not know the steps. You know the story of the steps, which is shorter and wrong in ways you will not discover until 3am.
+
+Doing it three times gets you the parts nobody writes down: that the export puts the date in the second column, that the file lands with a space in the name, that the thing fails on Mondays because Monday's file has a header row. Automation is the act of writing those details down precisely. If you do not have them yet, you are not automating, you are guessing.
+
+This is also why every record on this site has a prerequisites list and a failure modes list. They are the parts that only come from having run it.
+
+## It takes under ten minutes
+
+The instinct is to attack the biggest time sink. Resist it, at least the first time.
+
+Big tasks are big because they have branches: exceptions, judgment calls, a step where you look at something and decide. Every branch is a decision you now have to encode, and each one is a place the automation can be confidently wrong. A small task is usually small because it is linear, and linear is what a machine is good at.
+
+There is a second reason. A ten minute task that runs daily is fifty minutes a week. That is a real return, and you get it while learning on something that cannot hurt you much when it breaks.
+
+## You would notice it failing
+
+This is the one people skip, and it is the one that matters most.
+
+An automation that fails loudly costs you an afternoon. An automation that fails quietly costs you whatever was depending on it, discovered later, usually by someone else. A backup that has not run since March is worse than no backup, because you stopped worrying about it.
+
+So prefer tasks with a visible output: a file that appears, a message that arrives, a row that shows up. If the output is invisible, add a heartbeat. The uptime check on this site posts when a site goes down and again when it comes back, precisely so silence means something.
+
+## What this rules out, on purpose
+
+- Anything involving a login flow you cannot get an API key for. It will work until the login page changes.
+- Anything where being wrong is expensive: sending money, deleting data, replying to customers in your voice.
+- Anything you have never done. Do it three times first.
+
+## Then write it down like a drawing
+
+When it works, write it down properly: what starts it, the steps in order, what you needed before you began, and how it breaks. That last list is the one that makes it useful to anyone else, including you in six months.
+
+That is the format every record here uses. If you have one that fits, [submit it](/submit). Leave the name blank.
