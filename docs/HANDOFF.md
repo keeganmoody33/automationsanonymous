@@ -9,11 +9,11 @@ State of the build and every decision made so far, so any session can resume wit
 | Item | State |
 | --- | --- |
 | Branch | `claude/automationsanonymous-repo-build-1lnge8` |
-| Pull request | https://github.com/keeganmoody33/automationsanonymous/pull/2 (Phases 1-3 plus review fixes; merge pending, see open thread 1) |
+| Pull request | #2 merged 2026-09-05; `main` = Phases 1-4. New work continues on the branch and lands by PR. |
 | Phases done | 1 (repo init), 2 (app shell and design tokens), 3 (routes stubbed), 4 (Convex schema, functions, admin gate) |
 | Next phase | 5 (content layer and structured data) |
-| Vercel | Project `automationsanonymous` under team `lecturesfrom` (slug `lecturesfromog`). Production deployed from this branch via `vercel deploy --prod`. Env vars still unset, see open thread 2. |
-| Convex | Dev `strong-turtle-110`, prod `exciting-deer-586`, team `lecturesfrom`, project `automationsanonymous`. `ADMIN_SESSION_SECRET` set on dev. Prod env and first prod deploy pending, see open thread 2. |
+| Vercel | Project `automationsanonymous` under team `lecturesfrom` (slug `lecturesfromog`). Production = Phase 4, deployed via CLI 2026-09-05. Env: `NEXT_PUBLIC_CONVEX_URL` set for production. `ADMIN_PASSWORD` and `ADMIN_SESSION_SECRET` still unset there, so the admin gate rejects every password in production until they are; see open thread 1. |
+| Convex | Dev `strong-turtle-110`, prod `exciting-deer-586`, team `lecturesfrom`, project `automationsanonymous`. Functions deployed to both. `ADMIN_SESSION_SECRET` set on both. Prod holds one placeholder automation (`placeholder-smoke-test`) and two placeholder tools (`placeholder-tool`, `other-tool`), all obviously placeholder. |
 | Domain | `automationsanonymous.com` and `www` on Cloudflare, DNS-only CNAMEs to `cname.vercel-dns.com`, both hostnames verified on the Vercel project. Live. |
 | Landing design | Claude Design canvas, Rev C: https://claude.ai/code/artifact/cc15dfe5-8b3f-461e-b874-44fc4d179e2e |
 | QA | `scripts/ux-loop.sh [base-url]`: screenshots every route at 390 and 1280, checks HTTP status against expectation, canonical, robots (admin must be noindex), description, console errors. Exit 2 on any failed check. |
@@ -38,11 +38,10 @@ State of the build and every decision made so far, so any session can resume wit
 
 ### Open threads
 
-1. Merge PR #2 into `main`. `main` is still the initial commit, so a git-triggered production deploy would overwrite the live site with an empty tree until this lands. Production is currently deployed from the branch via CLI.
-2. Secrets the operator must set (the agent is blocked from writing secrets to external services). Values are in `.env.local`:
-   - Vercel production: `NEXT_PUBLIC_CONVEX_URL=https://exciting-deer-586.convex.cloud`, `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET`. Preview: `NEXT_PUBLIC_CONVEX_URL=https://strong-turtle-110.convex.cloud`.
-   - Convex prod: `npx convex env set --prod ADMIN_SESSION_SECRET <same value>`.
-   - Then `npx convex deploy` once from a logged-in machine, and generate a production deploy key in the Convex dashboard, set it as `CONVEX_DEPLOY_KEY` on Vercel, and change the build command to `npx convex deploy --cmd 'npm run build'`.
+1. Vercel production still needs `ADMIN_PASSWORD` and `ADMIN_SESSION_SECRET` (values in `.env.local`), then a redeploy. Until then `/admin` in production shows the login form and rejects every password:
+   `grep '^ADMIN_PASSWORD=' .env.local | cut -d= -f2- | npx vercel env add ADMIN_PASSWORD production --scope lecturesfromog --sensitive`
+   `grep '^ADMIN_SESSION_SECRET=' .env.local | cut -d= -f2- | npx vercel env add ADMIN_SESSION_SECRET production --scope lecturesfromog --sensitive`
+2. Git-triggered Vercel builds. Pushes to `main` now build (env is set) but do not deploy Convex. Generate a production deploy key in the Convex dashboard, set it as `CONVEX_DEPLOY_KEY` on Vercel production, and change the build command to `npx convex deploy --cmd 'npm run build'`. Until then, deploy Convex with `npx convex deploy` from a logged-in machine whenever `convex/` changes.
 3. Type: A (Plex Mono Bold, current), B (Plex Sans Condensed), C (Plex Sans), D (Plex Serif). Pick one.
 4. Cursor interactions for the landing build, proposed in the canvas comment thread: live crosshair, hover-revealed dimensions, ghost cursor replaying an automation, orbitable wireframe hero, scroll-driven drawing. Say which to cut.
 5. A separate "automation and anonymity showcase" brief (Cloudflare Workers, WebAssembly, edge functions) was pasted and parked. It conflicts with this repo's stack rules. Decide: separate project, a blog post here, or dropped.
