@@ -1,8 +1,14 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import { requireAdmin } from "../lib/adminAuth";
-import { checkSlug, LIMITS, validateAutomationPatch } from "../lib/limits";
 import {
+  checkSlug,
+  LIMITS,
+  validateAutomationContent,
+  validateAutomationPatch,
+} from "../lib/limits";
+import {
+  automationContentFields,
   automationDoc,
   automationPatchFields,
   statusValidator,
@@ -35,6 +41,72 @@ export const get = query({
     const id = ctx.db.normalizeId("automations", args.id);
     if (id === null) return null;
     return await ctx.db.get(id);
+  },
+});
+
+/**
+ * Author a record in-house: `origin: "authored"`, `status: "pending"`.
+ * Pending, not approved, so authored content passes through the same review
+ * gate as everything else and nothing writes `published` except `publish`.
+ * No slug, no publishedAt, no submitterEmail. Same limits as `submit`.
+ */
+export const createAuthored = mutation({
+  args: {
+    token: v.string(),
+    ...automationContentFields,
+    internalNotes: v.optional(v.string()),
+  },
+  returns: v.id("automations"),
+  handler: async (ctx, args) => {
+    await requireAdmin(args.token);
+    const { token: _token, internalNotes, ...content } = args;
+    validateAutomationContent(content);
+    if (internalNotes !== undefined && internalNotes.length > LIMITS.note) {
+      throw new ConvexError(`internalNotes must be at most ${LIMITS.note} characters`);
+    }
+
+    return await ctx.db.insert("automations", {
+      title: content.title.trim(),
+      summary: content.summary.trim(),
+      problem: content.problem,
+      trigger: content.trigger,
+      steps: content.steps,
+      prerequisites: content.prerequisites,
+      failureModes: content.failureModes,
+      payload: content.payload,
+      toolSlugs: content.toolSlugs,
+      timeSavedMinutes: content.timeSavedMinutes,
+      difficulty: content.difficulty,
+      sourceUrl: content.sourceUrl,
+      internalNotes,
+      origin: "authored",
+      status: "pending",
+    });
+  },
+});
+
+/**
+ * Hard delete, admin only. There is no undo and no soft-delete flag.
+ *
+ * Deleting a *published* record retires a permanent URL and frees its slug for
+ * reuse, which is the one way the "slugs are permanent" rule can be broken. Use
+ * it for placeholders and mistakes, not as an editorial unpublish.
+ *
+ * `id` is a plain string, matching `get`, so a route param can be passed
+ * straight through: a malformed or wrong-table id raises ConvexError("Not
+ * found") rather than an opaque ArgumentValidationError.
+ */
+export const remove = mutation({
+  args: { token: v.string(), id: v.string() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await requireAdmin(args.token);
+    const id = ctx.db.normalizeId("automations", args.id);
+    if (id === null) throw new ConvexError("Not found");
+    const doc = await ctx.db.get(id);
+    if (doc === null) throw new ConvexError("Not found");
+    await ctx.db.delete(id);
+    return null;
   },
 });
 
@@ -132,6 +204,18 @@ export const promoteRaw = mutation({
  * approved -> published. The only code path that writes `status: "published"`.
  * Assigns the permanent slug (validated, unique via by_slug) and `publishedAt`.
  * If the record already carries a slug, `args.slug` must equal it.
+ *
+ * Refuses when any tool slug the record links has no row in `tools`. A
+ * published page renders both `toolSlugs` and each step's `toolSlug` as links
+ * to `/tools/<slug>`, so a slug with no row ships a live 404 on a public page.
+ *
+ * This gate lives at publish, NOT at submit, on purpose. Do not move it. A
+ * stranger submitting an automation for a genuinely new tool is exactly the
+ * submission worth having, and rejecting it at the door would throw away the
+ * signal; the operator adds the tool during review. Publish is the moment the
+ * dangling link would actually go live, so publish is where it belongs. It is
+ * the mirror of `admin/tools.remove`, which refuses to delete a tool a
+ * published automation still references.
  */
 export const publish = mutation({
   args: { token: v.string(), id: v.id("automations"), slug: v.string() },
@@ -155,6 +239,30 @@ export const publish = mutation({
       .first();
     if (existing !== null && existing._id !== args.id) {
       throw new ConvexError("slug is already in use");
+    }
+
+    // Every slug this record will render as a /tools/<slug> link, deduped so a
+    // slug named in both places costs one read. Bounded by LIMITS.toolSlugs +
+    // LIMITS.steps, both small.
+    const linked = new Map<string, string>();
+    for (const slug of doc.toolSlugs) linked.set(slug, "toolSlugs");
+    for (const step of doc.steps) {
+      if (step.toolSlug !== undefined && !linked.has(step.toolSlug)) {
+        linked.set(step.toolSlug, `step ${step.order}`);
+      }
+    }
+    const missing: string[] = [];
+    for (const [slug, where] of linked) {
+      const tool = await ctx.db
+        .query("tools")
+        .withIndex("by_slug", (q) => q.eq("slug", slug))
+        .first();
+      if (tool === null) missing.push(`${slug} (${where})`);
+    }
+    if (missing.length > 0) {
+      throw new ConvexError(
+        `Cannot publish: ${missing.length} tool slug(s) have no row in the tools table and would render as 404 links: ${missing.join(", ")}. Add them with admin/tools.upsert first, then publish.`,
+      );
     }
 
     await ctx.db.patch(args.id, {

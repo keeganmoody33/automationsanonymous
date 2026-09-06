@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 };
 
 export default async function BlogIndex() {
-  const posts = await listPosts();
+  const posts = listPosts();
   return (
     <Sheet number="08" route="/blog" title="Blog" summary="Editorial posts on automation. Written in the repo, not in the database.">
       {posts.length === 0 ? (

@@ -8,7 +8,7 @@ import { JsonLd, article } from "@/lib/schema-org";
 export const dynamicParams = false;
 
 export async function generateStaticParams() {
-  const posts = await listPosts();
+  const posts = listPosts();
   return posts.map((p) => ({ slug: p.slug }));
 }
 
