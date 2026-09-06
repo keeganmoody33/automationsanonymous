@@ -28,6 +28,13 @@ jobs:
 
       - run: npm ci
 
+      # PageProps, LayoutProps and RouteContext are generated into .next/types,
+      # which is gitignored, so they do not exist on a clean checkout. Without
+      # this, tsc fails on every route file for reasons that have nothing to do
+      # with the code. CI found this on its first run.
+      - name: Generate route types
+        run: npx next typegen
+
       - name: Types
         run: npx tsc --noEmit
 

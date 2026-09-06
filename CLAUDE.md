@@ -9,6 +9,7 @@ Read `docs/HANDOFF.md` first. Part 1 is the current state and every decision mad
 Next.js 16 App Router, TypeScript strict, Tailwind 4, shadcn/ui, Convex, MDX in-repo, zod, three (landing hero only). Add nothing else without asking.
 
 - `npm run dev` then `npx convex dev` in a second terminal. On this machine Turbopack cannot bind its worker port; use `next dev --webpack` and `next build --webpack`. Vercel builds with Turbopack.
+- From a clean clone, run `npx next typegen` once before type-checking: `PageProps`, `LayoutProps` and `RouteContext` are generated into the gitignored `.next/types`, so `tsc` fails on every route file without it.
 - `npx tsc --noEmit`, `npm run lint`, `npx next build --webpack`, and `node scripts/check-payloads.mjs` must all pass before a commit. CI runs the same four on every push, plus `npm audit --omit=dev --audit-level=high`. CI is the only trustworthy build signal, because Turbopack cannot run on the operator's machine.
 - `scripts/ux-loop.sh [base-url]`: screenshots every route at 390 and 1280, checks status, canonical, robots, description, console errors. Exit 2 on any failure.
 - `scripts/e2e-flows.sh`: submit, review, approve, publish, import, reject in a browser against dev. Never point it at production.
