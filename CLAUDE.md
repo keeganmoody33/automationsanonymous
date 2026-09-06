@@ -9,7 +9,7 @@ Read `docs/HANDOFF.md` first. Part 1 is the current state and every decision mad
 Next.js 16 App Router, TypeScript strict, Tailwind 4, shadcn/ui, Convex, MDX in-repo, zod, three (landing hero only). Add nothing else without asking.
 
 - `npm run dev` then `npx convex dev` in a second terminal. On this machine Turbopack cannot bind its worker port; use `next dev --webpack` and `next build --webpack`. Vercel builds with Turbopack.
-- `npx tsc --noEmit`, `npm run lint`, `npx next build --webpack` must all pass before a commit.
+- `npx tsc --noEmit`, `npm run lint`, `npx next build --webpack`, and `node scripts/check-payloads.mjs` must all pass before a commit. CI runs the same four on every push, plus `npm audit --omit=dev --audit-level=high`. CI is the only trustworthy build signal, because Turbopack cannot run on the operator's machine.
 - `scripts/ux-loop.sh [base-url]`: screenshots every route at 390 and 1280, checks status, canonical, robots, description, console errors. Exit 2 on any failure.
 - `scripts/e2e-flows.sh`: submit, review, approve, publish, import, reject in a browser against dev. Never point it at production.
 - Deploy: `npx convex deploy` when `convex/` changes, then `npx vercel deploy --prod --yes --scope lecturesfromog`. Production Convex is `exciting-deer-586`, dev is `strong-turtle-110`.
@@ -33,6 +33,8 @@ Next.js 16 App Router, TypeScript strict, Tailwind 4, shadcn/ui, Convex, MDX in-
 7. Tokens only. Zero hardcoded colors, stroke widths, radii, or font stacks in components. Fonts are two roles, `--font-chrome` and `--font-voice`; components never name a face.
 8. The mode switch and the font switch are presentation only. They set attributes on `<html>` that CSS reads. They never change the server HTML and never fetch anything different.
 9. The Convex and MDX split is fixed: records in Convex, posts in the repo.
+10. A payload must be what it claims to be. The declared `format` is checked against an allowlist and the content is parsed for that format. This is enforced twice on purpose: `src/lib/payload-check.ts` runs in the request path and reaches all three write paths through the shared schema, and `convex/lib/limits.ts` repeats the cheap half as a backstop, because `NEXT_PUBLIC_CONVEX_URL` is public and the mutation is callable without going through any Next.js code. When you change one, change the other; a submission must never clear the form and then die in the mutation.
+11. `publish` refuses a record whose `toolSlugs` or `steps[].toolSlug` name a tool with no row, because every one of those renders as a link and would ship a live 404. Unknown slugs are allowed at submit time on purpose: a stranger submitting a genuinely new tool should not be rejected, and the operator adds the tool during review.
 
 ## The agent surface
 
@@ -55,7 +57,8 @@ Nothing else is public to anyone, so nothing else is exposed. Editing, approving
 - `src/lib/record-text.ts` is the one renderer for a record as text. `/llms-full.txt`, the `.md` view and the MCP tools all use it, so a machine sees the identical record everywhere.
 - `src/lib/submit-schema.ts` is the one structured submit schema, shared by the endpoint and the MCP tool. The browser form converts its text fields into the same shape. Convex validates all of it again.
 - Read endpoints send `access-control-allow-origin: *` and a shared `s-maxage`; agents are not on this domain.
-- `scripts/agent-surface-check.sh [base-url]` is read-only and safe against production: it handshakes MCP, lists tools, calls one, and asserts no private field appears in any public response.
+- `scripts/agent-surface-check.sh [base-url]` is read-only and safe against production: it handshakes MCP, lists tools, calls one, and asserts no private field appears in any public response. It runs weekly against production from `.github/workflows/verify-corpus.yml`.
+- `scripts/check-payloads.mjs` parses every payload in the seed corpus with the real tool for its declared format and enforces the content rules this file states. It is deliberately deeper than the request-path gate, because CI can spawn processes and a mutation cannot.
 
 ## Voice
 

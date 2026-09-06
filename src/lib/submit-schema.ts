@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { payloadIssue } from "@/lib/payload-check";
 
 /*
   The structured shape a machine submits, shared by POST /api/submit and the
@@ -32,9 +33,17 @@ export const submitSchema = z.strictObject({
   failureModes: z.array(z.string().trim().min(1).max(500)).max(30).default([]),
   payload: z
     .strictObject({
-      format: z.string().trim().min(1).max(40),
+      // Lowercased at the boundary so the stored fence tag is canonical and
+      // this gate agrees with the Convex backstop, which matches exactly.
+      format: z.string().trim().toLowerCase().min(1).max(40),
       content: z.string().min(1).max(50_000),
       sourceUrl: url.optional(),
+    })
+    // The payload must be what it says it is. All three write paths share this
+    // schema, so the check reaches the form, the API and the MCP tool at once.
+    .superRefine((payload, ctx) => {
+      const issue = payloadIssue(payload.format, payload.content);
+      if (issue) ctx.addIssue({ code: "custom", message: issue, path: ["content"] });
     })
     .optional(),
   toolSlugs: z.array(z.string().regex(SLUG, "lowercase words joined by hyphens")).max(20).default([]),

@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+# The operator's machine cannot build this project: Turbopack fails to bind a
+# worker port there, so local builds run --webpack while Vercel builds with
+# Turbopack. That makes CI the only place a trustworthy build signal exists.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      # Public by construction: this is the NEXT_PUBLIC_ Convex URL the browser
+      # already receives. Static generation reads published records at build.
+      NEXT_PUBLIC_CONVEX_URL: https://exciting-deer-586.convex.cloud
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Types
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Corpus conformance
+        run: node scripts/check-payloads.mjs
+
+      - name: Build
+        run: npx next build
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+  # Closes the standing thread where a human had to run `npx convex deploy` by
+  # hand whenever convex/ changed, which meant main could carry functions that
+  # production did not have. Dormant until CONVEX_DEPLOY_KEY exists: create a
+  # production deploy key in the Convex dashboard and add it as a repository
+  # secret, and this starts running with no further change.
+  deploy-convex:
+    needs: verify
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Deploy Convex functions
+        env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
+        run: |
+          if [ -z "$CONVEX_DEPLOY_KEY" ]; then
+            echo "CONVEX_DEPLOY_KEY is not set; skipping. Convex functions on production are whatever was last pushed by hand."
+            exit 0
+          fi
+          npx convex deploy

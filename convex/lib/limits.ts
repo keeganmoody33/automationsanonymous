@@ -106,9 +106,133 @@ export function checkSteps(steps: AutomationContent["steps"]) {
   }
 }
 
+/**
+ * Payload formats a submission may declare. A fixed allowlist, not a free
+ * string: `format` is echoed verbatim into a fenced code block on every
+ * published page and into the llms-full.txt feed, so an unbounded value lands
+ * straight in public output. `text` is the escape hatch for anything unlisted.
+ */
+export const PAYLOAD_FORMATS = [
+  "sh",
+  "bash",
+  "yaml",
+  "yml",
+  "json",
+  "xml",
+  "javascript",
+  "js",
+  "python",
+  "cron",
+  "text",
+  "toml",
+  "ini",
+  "sql",
+  "hcl",
+] as const;
+
+export type PayloadFormat = (typeof PAYLOAD_FORMATS)[number];
+
+const PAYLOAD_FORMAT_SET: ReadonlySet<string> = new Set(PAYLOAD_FORMATS);
+
+/** Shortest trimmed payload content worth publishing, any format. */
+const PAYLOAD_CONTENT_MIN = 8;
+
+/** Shorthand schedules accepted in place of the five cron schedule fields. */
+const CRON_MACROS = [
+  "@reboot",
+  "@daily",
+  "@hourly",
+  "@weekly",
+  "@monthly",
+  "@yearly",
+  "@annually",
+  "@midnight",
+] as const;
+
+const CRON_MACRO_SET: ReadonlySet<string> = new Set(CRON_MACROS);
+
+/** A line, truncated, safe to put inside an error message. */
+function quoteLine(line: string): string {
+  return line.length > 60 ? `${line.slice(0, 60)}...` : line;
+}
+
+function checkJsonPayload(content: string) {
+  try {
+    JSON.parse(content);
+  } catch {
+    fail("payload content must be valid JSON when format is json");
+  }
+}
+
+/**
+ * Environment assignments (`SHELL=/bin/sh`, `MAILTO=""`, `PATH=...`) are
+ * ordinary crontab content, not schedules, so they are skipped rather than
+ * measured against the field count. Kept byte-identical to the same regex in
+ * `src/lib/payload-check.ts` so the two gates agree.
+ */
+const CRON_ENV_ASSIGNMENT = /^[A-Za-z_][A-Za-z0-9_]*\s*=/;
+
+/**
+ * Every non-empty, non-comment, non-assignment line must be a real crontab
+ * entry: either five schedule fields plus a command (six or more
+ * whitespace-separated fields), or one of the `@`-shorthands followed by a
+ * command.
+ */
+function checkCronPayload(content: string) {
+  for (const raw of content.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (line.length === 0 || line.startsWith("#")) continue;
+    if (CRON_ENV_ASSIGNMENT.test(line)) continue;
+    const fields = line.split(/\s+/);
+    // The shorthand branch must come first: `@reboot /usr/bin/foo` is two
+    // fields and would fail the six-field count.
+    if (fields[0].startsWith("@")) {
+      if (!CRON_MACRO_SET.has(fields[0])) {
+        fail(
+          `payload content line "${quoteLine(line)}" uses an unknown cron shorthand; allowed: ${CRON_MACROS.join(", ")}`,
+        );
+      }
+      if (fields.length < 2) {
+        fail(`payload content line "${quoteLine(line)}" must be a cron shorthand followed by a command`);
+      }
+    } else if (fields.length < 6) {
+      fail(
+        `payload content line "${quoteLine(line)}" must have at least 6 whitespace-separated fields (5 schedule fields plus a command) when format is cron`,
+      );
+    }
+  }
+}
+
+/**
+ * Structural sanity for `payload.content`, keyed off `payload.format`.
+ *
+ * Deliberately cheap: the Convex runtime ships no parser libraries, so this is
+ * an allowlisted format, a real `JSON.parse` for json, and a field-count walk
+ * for cron. It is a backstop, not a linter. The Next.js side runs a fuller
+ * per-format parse in the shared zod schema and covers all three write paths
+ * (browser form, `POST /api/submit`, MCP `submit_automation`), but
+ * `NEXT_PUBLIC_CONVEX_URL` is public, so `submit` is callable directly and has
+ * to hold this line on its own.
+ *
+ * `format` is matched exactly, not case-folded or trimmed, because the stored
+ * value is what gets rendered as the code-fence tag.
+ */
+function checkPayloadShape(format: string, content: string) {
+  if (!PAYLOAD_FORMAT_SET.has(format)) {
+    fail(`payload format must be one of: ${PAYLOAD_FORMATS.join(", ")}`);
+  }
+  const trimmed = content.trim();
+  if (trimmed.length < PAYLOAD_CONTENT_MIN) {
+    fail(`payload content must be at least ${PAYLOAD_CONTENT_MIN} characters`);
+  }
+  if (format === "json") checkJsonPayload(trimmed);
+  if (format === "cron") checkCronPayload(trimmed);
+}
+
 export function checkPayload(payload: NonNullable<AutomationContent["payload"]>) {
   checkText(payload.format, LIMITS.payloadFormat, "payload format", true);
   checkText(payload.content, LIMITS.payloadContent, "payload content", true);
+  checkPayloadShape(payload.format, payload.content);
   if (payload.sourceUrl !== undefined) checkUrl(payload.sourceUrl, "payload sourceUrl");
 }
 

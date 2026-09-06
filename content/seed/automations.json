@@ -311,14 +311,167 @@
     "slack"
    ],
    "difficulty": "beginner"
+  },
+  {
+   "slug": "screenshot-every-route-after-every-change",
+   "title": "Screenshot every route at phone and desktop width after every change",
+   "summary": "One script walks every route in a site, checks each against an expected status code, captures the canonical, robots and description tags, screenshots at two widths, and exits non-zero when any check fails.",
+   "problem": "A CSS change that only breaks the phone layout, or a route that starts returning 200 where it should return 404, is invisible until someone happens to look. Checking by hand after every change lasts about two days.",
+   "trigger": "Run by hand after a visual change, or from CI against a deployed URL.",
+   "steps": [
+    {
+     "order": 1,
+     "action": "Install the browser driver",
+     "toolSlug": "agent-browser",
+     "detail": "npm i -g agent-browser && agent-browser install"
+    },
+    {
+     "order": 2,
+     "action": "List every route with the status it should return",
+     "toolSlug": "bash",
+     "detail": "The ROUTES array pairs a path with an expected code, so a 404 that starts returning 200 is a failure rather than a passing row."
+    },
+    {
+     "order": 3,
+     "action": "Run it against a local server or a deployed URL",
+     "toolSlug": "curl",
+     "detail": "scripts/ux-loop.sh https://example.com. With no argument it preflights localhost and exits early if nothing is listening."
+    },
+    {
+     "order": 4,
+     "action": "Read the dated report and the bold cells",
+     "detail": "Each run writes its own directory with a markdown table and the screenshots. Failures are bold in the table and set exit code 2."
+    }
+   ],
+   "prerequisites": [
+    "agent-browser on PATH, and a Chrome or Chromium it can drive.",
+    "A site that is actually reachable at the base URL, since the script preflights it and stops if not.",
+    "Somewhere to put screenshots. Each run writes a dated directory."
+   ],
+   "failureModes": [
+    "The headless browser emulates prefers-reduced-motion by default, so animations and any once-per-session overlay never play and screenshots look wrong for reasons that are not bugs. Clear it with agent-browser set media light.",
+    "A click on a control below the fold silently misses, because find does not scroll. Resolve the element reference first and scroll it into view.",
+    "get text returns rendered text, so anything styled uppercase comes back uppercase and a lowercase grep finds nothing.",
+    "A route that is slow rather than broken trips the curl timeout and reports 000, which reads identically to a dead server."
+   ],
+   "payload": {
+    "format": "sh",
+    "content": "#!/usr/bin/env bash\n# UX loop: screenshot every route at phone and desktop widths, check HTTP\n# status and console errors, write a dated report. Rerun after each fix.\n#\n#   scripts/ux-loop.sh                      # against the dev server, http://localhost:3000\n#   scripts/ux-loop.sh https://automationsanonymous.com\n#\n# Needs agent-browser on PATH (npm i -g agent-browser && agent-browser install).\n# Output lands in ux-out/<date>/ which is gitignored.\nset -euo pipefail\n\nBASE=\"${1:-http://localhost:${PORT:-3000}}\"\nBASE=\"${BASE%/}\"\ncurl -sf --max-time 10 -o /dev/null \"$BASE/\" || { echo \"No server responding at $BASE\" >&2; exit 1; }\nSTAMP=\"$(date +%Y-%m-%d-%H%M%S)\"\nOUT=\"ux-out/$STAMP\"\nSESSION=\"ux-loop-$$\"\nmkdir -p \"$OUT\"\n\n# route  expected-status\nROUTES=(\n  \"/ 200\"\n  \"/automations 200\"\n  \"/automations?tool=n8n&difficulty=beginner 200\"\n  \"/automations/back-up-one-folder-every-night 200\"\n  \"/automations/does-not-exist 404\"\n  \"/tools 200\"\n  \"/tools/cron 200\"\n  \"/tools/does-not-exist 404\"\n  \"/stacks/cron-to-slack 200\"\n  \"/stacks/cron-to-cron 404\"\n  \"/stacks/a-to-b 404\"\n  \"/blog 200\"\n  \"/blog/how-to-pick-your-first-automation 200\"\n  \"/blog/example-post 404\"\n  \"/submit 200\"\n  \"/admin/queue 200\"\n  \"/admin/automations/example-id 200\"\n  \"/admin/import 200\"\n  \"/does-not-exist 404\"\n  \"/sitemap.xml 200\"\n  \"/robots.txt 200\"\n  \"/llms.txt 200\"\n  \"/llms-full.txt 200\"\n  \"/api 200\"\n  \"/api/automations 200\"\n  \"/api/automations/back-up-one-folder-every-night 200\"\n  \"/api/automations/back-up-one-folder-every-night.md 200\"\n  \"/api/automations/does-not-exist 404\"\n  \"/api/tools 200\"\n  \"/api/tools/cron 200\"\n  \"/api/stacks/cron-to-slack 200\"\n  \"/api/blog 200\"\n  \"/api/blog/how-to-pick-your-first-automation.md 200\"\n)\n\n# name  width  height\nVIEWPORTS=(\n  \"phone 390 844\"\n  \"desktop 1280 800\"\n)\n\nREPORT=\"$OUT/report.md\"\n{\n  echo \"# UX loop $STAMP\"\n  echo\n  echo \"Base: $BASE\"\n  echo\n  echo \"| Route | HTTP | Canonical | Robots | Description | Title | Console errors | Phone | Desktop |\"\n  echo \"|---|---|---|---|---|---|---|---|---|\"\n} > \"$REPORT\"\n\nab() { agent-browser --session \"$SESSION\" \"$@\"; }\n\n# Always close the browser; mark the report if the run died partway.\ntrap 'rc=$?; ab close >/dev/null 2>&1 || true; if [ $rc -ne 0 ]; then echo \"| ABORTED (exit $rc) | | | | | | | | |\" >> \"$REPORT\"; echo \"ux-loop aborted (exit $rc); partial report: $REPORT\" >&2; fi' EXIT\n\nslug() { echo \"$1\" | sed -E 's#^/$#home#; s#^/##; s#[^A-Za-z0-9]+#-#g; s#-+$##'; }\n\nfail=0\nbody=\"$(mktemp)\"\nfor entry in \"${ROUTES[@]}\"; do\n  read -r route expect <<< \"$entry\"\n  name=\"$(slug \"$route\")\"\n  url=\"$BASE$route\"\n  code=\"$(curl -s -o \"$body\" -w '%{http_code}' --max-time 30 \"$url\" || echo 000)\"\n  # The answer-engine surface: what a crawler sees without a browser.\n  canonical=\"$(grep -oE '<link rel=\"canonical\" href=\"[^\"]*\"' \"$body\" | sed -E 's/.*href=\"([^\"]*)\"/\\1/' | head -1 || true)\"\n  robots=\"$(grep -oE '<meta name=\"robots\" content=\"[^\"]*\"' \"$body\" | sed -E 's/.*content=\"([^\"]*)\"/\\1/' | head -1 || true)\"\n  desc=\"$(grep -oE '<meta name=\"description\" content=\"[^\"]*\"' \"$body\" | sed -E 's/.*content=\"([^\"]*)\"/\\1/' | head -1 || true)\"\n  mark=\"$code\"\n  [ \"$code\" != \"$expect\" ] && { mark=\"**$code** (want $expect)\"; fail=$((fail+1)); }\n  case \"$route\" in\n    /admin*) echo \"$robots\" | grep -q noindex || { robots=\"**${robots:-missing}** (want noindex)\"; fail=$((fail+1)); } ;;\n  esac\n  title=\"\"; errors=\"\"; shots=()\n  for vp in \"${VIEWPORTS[@]}\"; do\n    read -r vname w h <<< \"$vp\"\n    ab set viewport \"$w\" \"$h\" >/dev/null\n    ab open \"$url\" >/dev/null\n    ab wait --load networkidle >/dev/null || true\n    [ -z \"$title\" ] && title=\"$(ab get title 2>/dev/null | tr -d '\\n' || true)\"\n    e=\"$(ab errors 2>/dev/null | grep -v '^$' | grep -vi 'no errors' || true)\"\n    [ -n \"$e\" ] && errors=\"$errors $vname:$(echo \"$e\" | wc -l | tr -d ' ')\"\n    shot=\"$OUT/$name.$vname.png\"\n    ab screenshot --full \"$shot\" >/dev/null\n    shots+=(\"$shot\")\n  done\n  echo \"| \\`$route\\` | $mark | ${canonical:-none} | ${robots:-none} | $( [ -n \"$desc\" ] && echo \"${desc:0:60}\" || echo none ) | $title | ${errors:-none} | ${shots[0]} | ${shots[1]} |\" >> \"$REPORT\"\n  echo \"$code  $route\"\ndone\n\nrm -f \"$body\"\necho\necho \"Report: $REPORT\"\nif [ \"$fail\" -gt 0 ]; then\n  echo \"$fail check(s) failed; see bold cells in the report\" >&2\n  exit 2\nfi"
+   },
+   "toolSlugs": [
+    "bash",
+    "curl",
+    "agent-browser"
+   ],
+   "difficulty": "intermediate"
+  },
+  {
+   "slug": "check-your-api-still-matches-your-website",
+   "title": "Check that your API and MCP server still say what your website says",
+   "summary": "A read-only script asserts that every machine-readable view of a site answers, that its MCP server completes a handshake and lists its tools, and that no private field appears in any public response.",
+   "problem": "When a site serves the same data as HTML, as JSON, as plain text and over MCP, the four drift apart quietly. A field excluded from one surface reappears in another, and nobody notices until it is indexed.",
+   "trigger": "Run by hand before a deploy, or from CI on a schedule against production.",
+   "steps": [
+    {
+     "order": 1,
+     "action": "Assert every read view answers and returns the shape you expect",
+     "toolSlug": "curl",
+     "detail": "Check a field that would only exist if the data really loaded, not just the status code."
+    },
+    {
+     "order": 2,
+     "action": "Assert unknown identifiers return 404 rather than an empty success",
+     "toolSlug": "curl"
+    },
+    {
+     "order": 3,
+     "action": "Complete a real MCP handshake and list the tools",
+     "toolSlug": "node",
+     "detail": "POST initialize, then tools/list, then call one tool and check the content it returns. Streamable HTTP may answer as SSE, so take the last data: line."
+    },
+    {
+     "order": 4,
+     "action": "Grep every public response for the fields that must never leave the server",
+     "toolSlug": "bash",
+     "detail": "This is the check that matters. Everything else is a smoke test."
+    }
+   ],
+   "prerequisites": [
+    "curl and node. No browser and no credentials, so it is safe to point at production.",
+    "A list of the field names that are supposed to be private."
+   ],
+   "failureModes": [
+    "The script passes while the site is broken, because every assertion only checked a status code. Assert on a field that proves the data loaded.",
+    "MCP over streamable HTTP may answer as JSON or as an SSE stream depending on the client headers, so a parser that assumes one shape fails against a working server.",
+    "A private field that is absent because the record has no value for it reads identically to one that is correctly excluded. Test with a record that has the field set."
+   ],
+   "payload": {
+    "format": "sh",
+    "content": "#!/usr/bin/env bash\n# Check that an agent has parity with a person: every read view answers, the\n# MCP server handshakes and lists its tools, a tool call returns a real\n# payload, and no private field escapes.\n#\n#   scripts/agent-surface-check.sh                                  # dev server\n#   scripts/agent-surface-check.sh https://automationsanonymous.com # production\n#\n# Read-only. It never calls submit_automation or POST /api/submit, so it is\n# safe against production.\nset -uo pipefail\n\nBASE=\"${1:-http://localhost:3000}\"\nBASE=\"${BASE%/}\"\nFAIL=0\n\nok()   { printf '  ok    %s\\n' \"$1\"; }\nbad()  { printf '  FAIL  %s\\n' \"$1\"; FAIL=$((FAIL + 1)); }\n\ncheck_json() { # path, jq-ish node expression, description\n  local body\n  body=\"$(curl -s --max-time 30 \"$BASE$1\")\"\n  if node -e \"\n      const d = JSON.parse(process.argv[1]);\n      if (!($2)) { process.exit(1); }\n    \" \"$body\" 2>/dev/null; then ok \"$1 $3\"; else bad \"$1 $3\"; fi\n}\n\necho \"== capability manifest ==\"\ncheck_json \"/api\" \"d.mcp && d.endpoints.length >= 8\" \"lists mcp and endpoints\"\n\necho \"== read views ==\"\ncheck_json \"/api/automations\" \"d.count >= 1 && d.automations[0].slug\" \"lists automations\"\ncheck_json \"/api/automations?difficulty=beginner\" \"d.automations.every(a => true)\" \"accepts difficulty\"\ncheck_json \"/api/automations?q=backup\" \"Array.isArray(d.automations)\" \"accepts q\"\ncheck_json \"/api/tools\" \"d.count >= 1 && d.tools[0].automationCount !== undefined\" \"lists tools with counts\"\n\nSLUG=\"$(curl -s --max-time 30 \"$BASE/api/automations\" | node -e 'let s=\"\";process.stdin.on(\"data\",d=>s+=d).on(\"end\",()=>{const j=JSON.parse(s);console.log(j.automations[0]?.slug??\"\")})')\"\nif [ -z \"$SLUG\" ]; then bad \"no automations published, cannot check a record\"; else\n  check_json \"/api/automations/$SLUG\" \"d.slug && d.steps.length >= 1 && d.jsonLd['@type'] === 'HowTo'\" \"record with json-ld\"\n  MD=\"$(curl -s --max-time 30 \"$BASE/api/automations/$SLUG.md\")\"\n  case \"$MD\" in \"# \"*) ok \"/api/automations/$SLUG.md markdown view\";; *) bad \"/api/automations/$SLUG.md markdown view\";; esac\n  check_json \"/api/tools/$(curl -s \"$BASE/api/tools\" | node -e 'let s=\"\";process.stdin.on(\"data\",d=>s+=d).on(\"end\",()=>console.log(JSON.parse(s).tools[0].slug))')\" \"d.slug && Array.isArray(d.automations)\" \"one tool\"\nfi\ncheck_json \"/api/blog\" \"d.count >= 1 && d.posts[0].slug\" \"lists posts\"\n\necho \"== not found ==\"\nfor p in /api/automations/nope /api/tools/nope /api/stacks/nope-to-nada /api/blog/nope; do\n  code=\"$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 \"$BASE$p\")\"\n  [ \"$code\" = \"404\" ] && ok \"$p returns 404\" || bad \"$p returned $code, want 404\"\ndone\n\necho \"== private fields never leak ==\"\nCORPUS=\"$(curl -s --max-time 30 \"$BASE/api/automations\"; curl -s \"$BASE/api/automations/$SLUG\"; curl -s \"$BASE/api/automations/$SLUG.md\"; curl -s \"$BASE/llms-full.txt\")\"\nfor field in submitterEmail rejectionNote internalNotes; do\n  if printf '%s' \"$CORPUS\" | grep -q \"$field\"; then bad \"$field appears in a public response\"; else ok \"$field absent\"; fi\ndone\n\necho \"== mcp ==\"\nmcp() { # method, params json\n  curl -s --max-time 30 -X POST \"$BASE/mcp\" \\\n    -H 'content-type: application/json' \\\n    -H 'accept: application/json, text/event-stream' \\\n    -d \"{\\\"jsonrpc\\\":\\\"2.0\\\",\\\"id\\\":1,\\\"method\\\":\\\"$1\\\",\\\"params\\\":$2}\"\n}\n# Streamable HTTP may answer as SSE; take the last data: line when it does.\nunwrap() { node -e '\n  let s = \"\"; process.stdin.on(\"data\", d => s += d).on(\"end\", () => {\n    const lines = s.split(/\\r?\\n/).filter(l => l.startsWith(\"data: \"));\n    process.stdout.write(lines.length ? lines[lines.length - 1].slice(6) : s);\n  });'; }\n\nINIT=\"$(mcp initialize '{\"protocolVersion\":\"2025-06-18\",\"capabilities\":{},\"clientInfo\":{\"name\":\"agent-surface-check\",\"version\":\"1.0.0\"}}' | unwrap)\"\nif printf '%s' \"$INIT\" | node -e 'let s=\"\";process.stdin.on(\"data\",d=>s+=d).on(\"end\",()=>{const r=JSON.parse(s);process.exit(r.result&&r.result.serverInfo?0:1)})' 2>/dev/null; then\n  ok \"initialize handshake\"\nelse\n  bad \"initialize handshake: $(printf '%s' \"$INIT\" | head -c 200)\"\nfi\n\nTOOLS=\"$(mcp tools/list '{}' | unwrap)\"\nNAMES=\"$(printf '%s' \"$TOOLS\" | node -e 'let s=\"\";process.stdin.on(\"data\",d=>s+=d).on(\"end\",()=>{try{console.log(JSON.parse(s).result.tools.map(t=>t.name).sort().join(\",\"))}catch{console.log(\"\")}})')\"\nEXPECTED=\"get_automation,get_post,get_stack,list_posts,list_tools,search_automations,submit_automation\"\n[ \"$NAMES\" = \"$EXPECTED\" ] && ok \"tools/list: $NAMES\" || bad \"tools/list got [$NAMES] want [$EXPECTED]\"\n\nCALL=\"$(mcp tools/call \"{\\\"name\\\":\\\"get_automation\\\",\\\"arguments\\\":{\\\"slug\\\":\\\"$SLUG\\\"}}\" | unwrap)\"\nif printf '%s' \"$CALL\" | node -e 'let s=\"\";process.stdin.on(\"data\",d=>s+=d).on(\"end\",()=>{try{const t=JSON.parse(s).result.content[0].text;process.exit(t.includes(\"## Steps\")&&t.includes(\"# \")?0:1)}catch{process.exit(1)}})' 2>/dev/null; then\n  ok \"tools/call get_automation returns the record\"\nelse\n  bad \"tools/call get_automation: $(printf '%s' \"$CALL\" | head -c 200)\"\nfi\n\nSEARCH=\"$(mcp tools/call '{\"name\":\"search_automations\",\"arguments\":{\"q\":\"backup\"}}' | unwrap)\"\nprintf '%s' \"$SEARCH\" | grep -q '\"text\"' && ok \"tools/call search_automations\" || bad \"tools/call search_automations\"\n\necho\nif [ \"$FAIL\" -eq 0 ]; then echo \"agent surface: all checks passed against $BASE\"; else echo \"agent surface: $FAIL check(s) failed against $BASE\" >&2; fi\nexit \"$FAIL\""
+   },
+   "toolSlugs": [
+    "bash",
+    "curl",
+    "node"
+   ],
+   "difficulty": "intermediate"
+  },
+  {
+   "slug": "fail-the-build-when-published-content-stops-being-valid",
+   "title": "Fail the build when published content stops being valid",
+   "summary": "A CI step parses every code snippet a site publishes using the real tool for its declared format, so a snippet that stops being valid breaks the build instead of sitting published and wrong.",
+   "problem": "Documentation and directories publish code that is never executed again after it is written. It rots on someone else's release schedule, and the first person to find out is a reader who pastes it and it fails.",
+   "trigger": "Every push, through the CI workflow, and weekly against production.",
+   "steps": [
+    {
+     "order": 1,
+     "action": "Store the declared format alongside every snippet",
+     "detail": "Without it there is nothing to check against, and a checker has to guess."
+    },
+    {
+     "order": 2,
+     "action": "Parse each snippet with the real tool for its format",
+     "toolSlug": "node",
+     "detail": "bash -n for shell, node --check for JavaScript, a YAML and XML parse, a field count for cron. Write to a temp file whose extension the tool expects."
+    },
+    {
+     "order": 3,
+     "action": "Check the content rules you claim to hold, in the same pass",
+     "detail": "Slug shape, field lengths, ordering, references that must resolve. A rule nothing enforces is a preference."
+    },
+    {
+     "order": 4,
+     "action": "Exit non-zero and name every failure",
+     "toolSlug": "github-actions",
+     "detail": "One report listing every problem beats failing on the first one."
+    }
+   ],
+   "prerequisites": [
+    "Snippets stored as data with a declared format, not embedded in prose.",
+    "The checkers available on the runner. bash, node and python3 ship on GitHub-hosted Ubuntu."
+   ],
+   "failureModes": [
+    "Node picks a module format from the file extension, so a snippet written to a .javascript file fails to parse for a reason that has nothing to do with the snippet.",
+    "A parse check proves syntax and nothing else. A script that parses cleanly and deletes the wrong directory passes.",
+    "Checking only the source file misses drift in what is actually published, if the two can differ."
+   ],
+   "payload": {
+    "format": "yaml",
+    "content": "name: CI\n\non:\n  push:\n    branches: [\"**\"]\n  pull_request:\n\n# The operator's machine cannot build this project: Turbopack fails to bind a\n# worker port there, so local builds run --webpack while Vercel builds with\n# Turbopack. That makes CI the only place a trustworthy build signal exists.\nconcurrency:\n  group: ci-${{ github.ref }}\n  cancel-in-progress: true\n\njobs:\n  verify:\n    runs-on: ubuntu-latest\n    env:\n      # Public by construction: this is the NEXT_PUBLIC_ Convex URL the browser\n      # already receives. Static generation reads published records at build.\n      NEXT_PUBLIC_CONVEX_URL: https://exciting-deer-586.convex.cloud\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 22\n          cache: npm\n\n      - run: npm ci\n\n      - name: Types\n        run: npx tsc --noEmit\n\n      - name: Lint\n        run: npm run lint\n\n      - name: Corpus conformance\n        run: node scripts/check-payloads.mjs\n\n      - name: Build\n        run: npx next build\n\n      - name: Audit production dependencies\n        run: npm audit --omit=dev --audit-level=high"
+   },
+   "toolSlugs": [
+    "github-actions",
+    "node"
+   ],
+   "difficulty": "beginner"
   }
  ],
  "tools": [
   {
-   "slug": "cron",
-   "name": "cron",
-   "category": "scheduling",
-   "website": "https://man7.org/linux/man-pages/man5/crontab.5.html"
+   "slug": "agent-browser",
+   "name": "agent-browser",
+   "category": "browser automation",
+   "website": "https://www.npmjs.com/package/agent-browser"
   },
   {
    "slug": "bash",
@@ -327,10 +480,10 @@
    "website": "https://www.gnu.org/software/bash/"
   },
   {
-   "slug": "tar",
-   "name": "tar",
-   "category": "files",
-   "website": "https://www.gnu.org/software/tar/"
+   "slug": "cron",
+   "name": "cron",
+   "category": "scheduling",
+   "website": "https://man7.org/linux/man-pages/man5/crontab.5.html"
   },
   {
    "slug": "curl",
@@ -339,16 +492,10 @@
    "website": "https://curl.se/"
   },
   {
-   "slug": "slack",
-   "name": "Slack",
-   "category": "chat",
-   "website": "https://slack.com/"
-  },
-  {
-   "slug": "gmail",
-   "name": "Gmail",
-   "category": "email",
-   "website": "https://mail.google.com/"
+   "slug": "docker",
+   "name": "Docker",
+   "category": "containers",
+   "website": "https://www.docker.com/"
   },
   {
    "slug": "github-actions",
@@ -357,16 +504,16 @@
    "website": "https://github.com/features/actions"
   },
   {
-   "slug": "npm",
-   "name": "npm",
-   "category": "packages",
-   "website": "https://www.npmjs.com/"
+   "slug": "gmail",
+   "name": "Gmail",
+   "category": "email",
+   "website": "https://mail.google.com/"
   },
   {
-   "slug": "docker",
-   "name": "Docker",
-   "category": "containers",
-   "website": "https://www.docker.com/"
+   "slug": "google-apps-script",
+   "name": "Google Apps Script",
+   "category": "scripting",
+   "website": "https://script.google.com/"
   },
   {
    "slug": "google-forms",
@@ -381,10 +528,28 @@
    "website": "https://sheets.google.com/"
   },
   {
-   "slug": "google-apps-script",
-   "name": "Google Apps Script",
-   "category": "scripting",
-   "website": "https://script.google.com/"
+   "slug": "node",
+   "name": "Node.js",
+   "category": "runtime",
+   "website": "https://nodejs.org/"
+  },
+  {
+   "slug": "npm",
+   "name": "npm",
+   "category": "packages",
+   "website": "https://www.npmjs.com/"
+  },
+  {
+   "slug": "slack",
+   "name": "Slack",
+   "category": "chat",
+   "website": "https://slack.com/"
+  },
+  {
+   "slug": "tar",
+   "name": "tar",
+   "category": "files",
+   "website": "https://www.gnu.org/software/tar/"
   }
  ]
 }
