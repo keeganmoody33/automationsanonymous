@@ -51,10 +51,41 @@ for p in /api/automations/nope /api/tools/nope /api/stacks/nope-to-nada /api/blo
 done
 
 echo "== private fields never leak =="
-CORPUS="$(curl -s --max-time 30 "$BASE/api/automations"; curl -s "$BASE/api/automations/$SLUG"; curl -s "$BASE/api/automations/$SLUG.md"; curl -s "$BASE/llms-full.txt")"
-for field in submitterEmail rejectionNote internalNotes; do
-  if printf '%s' "$CORPUS" | grep -q "$field"; then bad "$field appears in a public response"; else ok "$field absent"; fi
+# Asserted on structure, not on substrings. The corpus itself publishes this
+# script as a record, so a grep for the field names matches its own source and
+# reports a leak that is not there. Checking JSON keys is both immune to that
+# and stricter: it also catches a value rendered under a renamed key.
+leak_check() { # url, description
+  curl -s --max-time 30 "$BASE$1" | node -e '
+    let s = ""; process.stdin.on("data", d => s += d).on("end", () => {
+      const PRIVATE = ["submitterEmail", "rejectionNote", "internalNotes"];
+      const found = new Set();
+      const walk = (v) => {
+        if (Array.isArray(v)) return v.forEach(walk);
+        if (v && typeof v === "object") {
+          for (const k of Object.keys(v)) {
+            if (PRIVATE.includes(k)) found.add(k);
+            walk(v[k]);
+          }
+        }
+      };
+      try { walk(JSON.parse(s)); } catch { process.exit(2); }
+      if (found.size) { console.error([...found].join(",")); process.exit(1); }
+    });'
+}
+for path in "/api/automations" "/api/automations/$SLUG"; do
+  if leak_check "$path" 2>/dev/null; then ok "$path exposes no private key"; else bad "$path exposes a private key"; fi
 done
+
+# The public record must carry only known-public keys, so a newly added private
+# field fails here rather than waiting for someone to add it to a deny list.
+ALLOWED="slug,title,summary,problem,trigger,steps,prerequisites,failureModes,payload,toolSlugs,timeSavedMinutes,difficulty,sourceUrl,origin,publishedAt,url,markdown,jsonLd"
+EXTRA="$(curl -s --max-time 30 "$BASE/api/automations/$SLUG" | node -e '
+  let s = ""; process.stdin.on("data", d => s += d).on("end", () => {
+    const allowed = new Set(process.argv[1].split(","));
+    console.log(Object.keys(JSON.parse(s)).filter(k => !allowed.has(k)).join(","));
+  });' "$ALLOWED")"
+[ -z "$EXTRA" ] && ok "record carries only known-public keys" || bad "record carries unexpected key(s): $EXTRA"
 
 echo "== mcp =="
 mcp() { # method, params json
