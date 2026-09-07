@@ -17,10 +17,10 @@
   --paper: oklch(97% 0.008 85);
   --paper-deep: oklch(93.5% 0.012 85);
   --ink: oklch(22% 0.03 250);
-  --ink-2: oklch(44% 0.025 250);
-  --ink-3: oklch(66% 0.02 250);
-  --line: oklch(80% 0.015 250);
-  --line-faint: oklch(89% 0.01 250);
+  --ink-2: oklch(40% 0.028 250);
+  --ink-3: oklch(58% 0.025 250);
+  --line: oklch(72% 0.022 250);
+  --line-faint: oklch(85% 0.014 250);
   --mark: oklch(58% 0.19 30);
   --mark-soft: oklch(58% 0.19 30 / 0.14);
 
@@ -36,6 +36,49 @@
   /* measurement ticks */
   --tick: 6px;
   --tick-major: 10px;
+
+  color-scheme: light;
+}
+
+/*
+  Dark mode is a blueprint: white lines on deep blue, which is what this idiom
+  actually looks like in the dark. Only the palette moves. Every stroke width,
+  grid step and font role is shared, so nothing downstream knows the theme
+  exists.
+
+  Contrast is raised on purpose relative to the paper theme. The paper theme was
+  tuned for a printed drawing and reads as too faint on a screen, which is the
+  complaint that prompted this.
+*/
+:root[data-theme="dark"] {
+  --paper: oklch(20% 0.03 250);
+  --paper-deep: oklch(25.5% 0.035 250);
+  --ink: oklch(96% 0.012 240);
+  --ink-2: oklch(80% 0.025 240);
+  --ink-3: oklch(62% 0.03 245);
+  --line: oklch(42% 0.04 248);
+  --line-faint: oklch(31% 0.035 250);
+  --mark: oklch(72% 0.17 45);
+  --mark-soft: oklch(72% 0.17 45 / 0.22);
+
+  color-scheme: dark;
+}
+
+/* System preference, unless the visitor has explicitly chosen light. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: oklch(20% 0.03 250);
+    --paper-deep: oklch(25.5% 0.035 250);
+    --ink: oklch(96% 0.012 240);
+    --ink-2: oklch(80% 0.025 240);
+    --ink-3: oklch(62% 0.03 245);
+    --line: oklch(42% 0.04 248);
+    --line-faint: oklch(31% 0.035 250);
+    --mark: oklch(72% 0.17 45);
+    --mark-soft: oklch(72% 0.17 45 / 0.22);
+
+    color-scheme: dark;
+  }
 }
 
 /* A hairline is one device pixel. On a 1x display 0.5px rounds away and the
@@ -247,9 +290,6 @@
 @layer base {
   * {
     border-color: var(--line);
-  }
-  html {
-    color-scheme: light;
   }
   body {
     background: var(--paper);

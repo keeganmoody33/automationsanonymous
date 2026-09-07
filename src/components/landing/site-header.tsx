@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Switches } from "@/components/switches/switches";
+import { DisplayOptions, ThemeSwitch } from "@/components/switches/switches";
 
 // Public routes only. Admin is reached by URL; it is not linked anywhere.
 // Stacks have no index route in the brief, so they are reached through tools.
@@ -37,8 +37,8 @@ export function SiteHeader() {
           ))}
         </nav>
         <div className="flex items-center gap-unit-2">
-          <Switches />
-          <span className="hidden text-chrome text-ink-2 lg:inline">Sheet 01 · Rev A</span>
+          <ThemeSwitch />
+          <DisplayOptions />
         </div>
       </div>
     </header>
