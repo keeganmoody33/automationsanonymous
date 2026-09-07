@@ -11,7 +11,7 @@ A public directory of real, working automations plus an editorial blog. Every au
 
 ## Setup
 
-> Build status: all eight phases of the brief plus the landing page are built and live at https://automationsanonymous.com. See `docs/HANDOFF.md` for state and `CLAUDE.md` for the rules. Live at https://automationsanonymous.com.
+> Build status: all eight phases of the brief plus the landing page are built and live at https://automationsanonymous.com. CI verifies the code and the corpus on every push. See `docs/HANDOFF.md` for state and `CLAUDE.md` for the rules. Live at https://automationsanonymous.com.
 
 1. Clone the repo and install dependencies:
 
@@ -84,5 +84,17 @@ If Turbopack fails locally with `binding to a port: Operation not permitted`, th
 `scripts/ux-loop.sh [base-url]` screenshots every route at phone and desktop widths, records HTTP status and console errors, and writes a dated report under `ux-out/` (gitignored). Needs `agent-browser` on PATH. Run it after each visual change, against the dev server (`http://localhost:3000`) by default or against production with the domain as the argument.
 
 `scripts/e2e-flows.sh` drives the submit, review, publish, import, and reject flows in a browser against a local dev server and the Convex dev deployment. It creates placeholder records in dev; never point it at production.
+
+`scripts/check-payloads.mjs` parses every payload in the seed corpus with the real tool for its declared format and enforces the project's content rules. It runs in CI on every push, so a payload that stops being valid breaks the build rather than sitting published and wrong.
+
+`scripts/agent-surface-check.sh [base-url]` checks that an agent has parity with a person: every machine view answers, the MCP server handshakes and lists its tools, a tool call returns a real record, and no private field appears in a public response. Read-only, so it is safe against production.
+
+## For agents
+
+The directory is usable without a browser. `GET /api` is the capability manifest; `/mcp` is a stateless MCP server with `search_automations`, `get_automation`, `list_tools`, `get_stack`, `list_posts`, `get_post` and `submit_automation`. `/llms.txt` points at both. The parity table is in `CLAUDE.md`.
+
+## Content
+
+`content/seed/automations.json` holds the authored records. `scripts/seed-content.sh <file> [--prod]` publishes them through the real review path (createAuthored, approve, publish); it is resumable and safe to run twice. `scripts/clear-placeholders.sh [--prod]` deletes anything titled PLACEHOLDER, which the test scripts create on purpose.
 
 The build fails on any blog post with invalid frontmatter. That is intentional.

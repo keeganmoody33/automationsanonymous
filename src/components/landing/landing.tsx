@@ -46,6 +46,10 @@ function fmtDate(ms: number) {
 
 export function Landing({ automations, tools, stacks }: Props) {
   const latest = automations[0];
+  // The preview is the first thing a newcomer reads in full, so it is the
+  // most approachable record rather than the newest, which is whatever was
+  // published last and is often the least relatable.
+  const showcase = automations.find((a) => a.difficulty === "beginner" && a.payload) ?? latest;
   const minutes = automations.reduce((a, x) => a + (x.timeSavedMinutes ?? 0), 0);
   const timeSaved = minutes > 0 ? `Time saved · ${minutes} min / run across the directory` : "Time saved · recorded per run";
   const slot = (i: number, fallback: string) => tools[i]?.name ?? fallback;
@@ -62,10 +66,10 @@ export function Landing({ automations, tools, stacks }: Props) {
         {/* 01 hero */}
         <section className={s.hero}>
           <div>
-            <div className={s.eyebrow}><span className={s.dash} /><span className={`${s.label} ${s.labelInk}`}>DWG 001 · Directory of working automations · Names withheld</span></div>
+            <div className={s.eyebrow}><span className={s.dash} /><span className={`${s.label} ${s.labelInk}`}>DWG 001 · A directory of small jobs your computer can do for you</span></div>
             <h1 className={s.title}>Stop doing it <span className={s.tag}>by hand.</span></h1>
             <p className={s.summary}>
-              A public directory of real automations, each documented as a structured record: trigger, steps, prerequisites, failure modes, and the runnable payload. Submitted anonymously. Reviewed by hand.
+              Free write-ups of automations that actually work, with the code to copy. Every one tells you what sets it off, each step in order, what you need before you start, how it breaks, and why. No account, no sign-up, nothing to install.
             </p>
             <div className={s.ctas}>
               <Link href="/automations" className={`${s.btn} ${s.btnPrimary}`}>Browse the directory <Arrow /></Link>
@@ -91,10 +95,70 @@ export function Landing({ automations, tools, stacks }: Props) {
           </div>
         </section>
 
-        {/* 02 anatomy */}
+        {/* 02 how it works, in plain words, before any of the idiom */}
+        <section data-dwg>
+          <div className={s.how}>
+            <div className={`${s.howStep} pop p1`}>
+              <div className={s.n}>1</div>
+              <h3>Find something you do over and over</h3>
+              <p>Filing receipts, backing up a folder, being told when a site goes down. If you have done it by hand more than twice, it is probably in here.</p>
+            </div>
+            <div className={`${s.howStep} pop p2`}>
+              <div className={s.n}>2</div>
+              <h3>Copy the code</h3>
+              <p>Every write-up ends in the real thing: a script, a scheduled line, a settings file. Not an example of one. The exact text, ready to paste.</p>
+            </div>
+            <div className={`${s.howStep} pop p3`}>
+              <div className={s.n}>3</div>
+              <h3>Follow the steps, and know how it breaks</h3>
+              <p>Each one lists what you need first and the ways it goes wrong in practice, so when it does, you already know why.</p>
+            </div>
+          </div>
+        </section>
+
+        {/* 03 one real record, so the thing itself is visible early */}
+        {showcase ? (
+          <section>
+            <div className={s.peek}>
+              <div className={s.peekBar}>
+                <span className={`${s.label} ${s.labelInk}`}>Here is one of them, in full</span>
+                <span className={s.label}>{showcase.difficulty}</span>
+              </div>
+              <div className={s.peekBody}>
+                <div>
+                  <h3>{showcase.title}</h3>
+                  <p className={s.lede}>{showcase.summary}</p>
+                  <div className={s.peekList}>
+                    {[...showcase.steps].sort((a, b) => a.order - b.order).slice(0, 4).map((step) => (
+                      <div key={step.order}>
+                        <span>{String(step.order).padStart(2, "0")}</span>
+                        <p>{step.action}</p>
+                      </div>
+                    ))}
+                    {showcase.steps.length > 4 ? (
+                      <div>
+                        <span>+</span>
+                        <p>{showcase.steps.length - 4} more, then what to do when it breaks</p>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+                <div className={s.peekCode}>
+                  <span className={s.label}>The code you copy</span>
+                  <pre>{(showcase.payload?.content ?? "").split("\n").slice(0, 14).join("\n")}</pre>
+                </div>
+              </div>
+              <Link href={`/automations/${showcase.slug}`} className={s.peekMore}>
+                Read the whole thing <Arrow />
+              </Link>
+            </div>
+          </section>
+        ) : null}
+
+        {/* 04 anatomy */}
         <section>
           <div className={s.secHead}>
-            <div className={s.no}>02</div>
+            <div className={s.no}>04</div>
             <div>
               <h2>Every automation is a drawing set, not a blog post.</h2>
               <p className={s.lede}>One record, six fixed fields, the same order every time. The summary is written to stand alone as a single quotable sentence. The payload is the runnable artifact and is never paraphrased into prose.</p>
@@ -157,31 +221,10 @@ export function Landing({ automations, tools, stacks }: Props) {
           </div>
         </section>
 
-        {/* 03 twelve sheets */}
-        <section>
-          <div className={s.secHead}>
-            <div className={s.no}>03</div>
-            <div>
-              <h2>Twelve sheets. None of them shipped.</h2>
-              <p className={s.lede}>The parts of a day that will not automate, drawn up anyway. Every sheet is stamped. Everything below this section is real, runnable, and reviewed by hand.</p>
-            </div>
-          </div>
-          <div className={s.sheets}>
-            {SHEETS.map(([title, trigger, fails], i) => (
-              <div key={title} className={`${s.sh} ${i === SHEETS.length - 1 ? s.shLast : ""}`}>
-                <span className={s.stamp}>Not for construction</span>
-                <div className={s.no}>{String(i + 1).padStart(2, "0")}</div>
-                <h3>{title}</h3>
-                <div className={s.kv}><b>Trigger</b><span>{trigger}</span><b>Fails when</b><span>{fails}</span></div>
-              </div>
-            ))}
-          </div>
-        </section>
-
         {/* 04 patterns */}
         <section>
           <div className={s.secHead}>
-            <div className={s.no}>04</div>
+            <div className={s.no}>05</div>
             <div>
               <h2>Drawn from the real world, tool by tool.</h2>
               <p className={s.lede}>Browse by the tool you already have, or by the pair you are trying to connect. Three common patterns, shown as schematics. Tool slots fill from the record.</p>
@@ -255,7 +298,7 @@ export function Landing({ automations, tools, stacks }: Props) {
         {/* 05 cited */}
         <section>
           <div className={s.secHead}>
-            <div className={s.no}>05</div>
+            <div className={s.no}>06</div>
             <div>
               <h2>Built to be cited.</h2>
               <p className={s.lede}>Every published page is rendered on the server, structured as a HowTo, and mirrored into plain text for machines. No accounts, no author, no handle. The record is the whole story.</p>
@@ -316,10 +359,31 @@ export function Landing({ automations, tools, stacks }: Props) {
           </div>
         </section>
 
+        {/* 03 twelve sheets */}
+        <section>
+          <div className={s.secHead}>
+            <div className={s.no}>07</div>
+            <div>
+              <h2>Twelve sheets. None of them shipped.</h2>
+              <p className={s.lede}>The parts of a day that will not automate, drawn up anyway. Every sheet is stamped. Everything below this section is real, runnable, and reviewed by hand.</p>
+            </div>
+          </div>
+          <div className={s.sheets}>
+            {SHEETS.map(([title, trigger, fails], i) => (
+              <div key={title} className={`${s.sh} ${i === SHEETS.length - 1 ? s.shLast : ""}`}>
+                <span className={s.stamp}>Not for construction</span>
+                <div className={s.no}>{String(i + 1).padStart(2, "0")}</div>
+                <h3>{title}</h3>
+                <div className={s.kv}><b>Trigger</b><span>{trigger}</span><b>Fails when</b><span>{fails}</span></div>
+              </div>
+            ))}
+          </div>
+        </section>
+
         {/* 06 submit */}
         <section className={s.submit}>
           <div>
-            <div className={s.eyebrow}><span className={s.dash} /><span className={`${s.label} ${s.labelInk}`}>06 · Submit</span></div>
+            <div className={s.eyebrow}><span className={s.dash} /><span className={`${s.label} ${s.labelInk}`}>08 · Submit</span></div>
             <h2>Submit one. Leave the name blank.</h2>
             <p className={s.lede}>Describe the automation, paste the payload, done. An email is optional and is only ever used to reply. It is never rendered, never in the sitemap, never in the record. Every submission is reviewed by hand before it is published.</p>
             <div className={s.ctas}><Link href="/submit" className={`${s.btn} ${s.btnPrimary}`}>Submit anonymously</Link><Link href="/automations" className={`${s.btn} ${s.btnGhost}`}>See what gets published</Link></div>

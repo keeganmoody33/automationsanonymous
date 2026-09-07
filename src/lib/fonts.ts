@@ -13,8 +13,12 @@ export const VOICE_FONTS = [
 export type VoiceFontId = (typeof VOICE_FONTS)[number]["id"];
 export const DEFAULT_FONT: VoiceFontId = "mono";
 
+export const THEMES = ["system", "light", "dark"] as const;
+export type Theme = (typeof THEMES)[number];
+export const DEFAULT_THEME: Theme = "system";
+
 export const MODES = ["human", "agent"] as const;
 export type Mode = (typeof MODES)[number];
 export const DEFAULT_MODE: Mode = "human";
 
-export const STORAGE = { mode: "aa:mode", font: "aa:font" } as const;
+export const STORAGE = { mode: "aa:mode", font: "aa:font", theme: "aa:theme" } as const;

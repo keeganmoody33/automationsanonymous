@@ -40,7 +40,24 @@
 .canvasLayer { position: absolute; inset: 0; }
 .canvasLayer canvas { display: block; width: 100% !important; height: 100% !important; cursor: grab; touch-action: pan-y; }
 .canvasLayer canvas:active { cursor: grabbing; }
-.dimmed { opacity: 0.28; transition: opacity 600ms ease; }
+.canvasLayer[data-grabbed] + .grabHint { opacity: 0; }
+/* The SVG keeps its callout numbers readable behind the wireframe. It was
+   0.28, which combined with hairline WebGL lines to make the whole hero
+   invisible; that was the bug, not the layering. */
+.behind { opacity: 0.55; transition: opacity 600ms ease; }
+.grabHint {
+  position: absolute; right: 0; bottom: -8px;
+  font-family: var(--font-chrome); font-size: 10px; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--ink-3);
+  display: flex; align-items: center; gap: var(--grid-unit);
+  pointer-events: none;
+}
+.grabHint::before {
+  content: ""; width: 22px; height: var(--stroke-thin); background: var(--ink-3);
+  animation: hint-slide 2.4s ease-in-out infinite;
+}
+@keyframes hint-slide { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(8px); } }
+@media (prefers-reduced-motion: reduce) { .grabHint::before { animation: none; } }
 .plate { position: absolute; left: 0; bottom: -8px; display: flex; border: var(--stroke-thin) solid var(--ink); background: var(--paper); }
 .plate > div { padding: 6px 10px; border-right: var(--stroke-thin) solid var(--ink); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-2); }
 .plate > div:last-child { border-right: 0; }
@@ -183,3 +200,41 @@
 @keyframes ld-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 @keyframes ld-cycle { 0% { opacity: 0 } 6% { opacity: 1 } 22% { opacity: 1 } 28% { opacity: 0 } 100% { opacity: 0 } }
 @keyframes ld-sweep { from { left: calc(var(--grid-unit) * 1.5); } to { left: calc(100% - var(--grid-unit) * 1.5); } }
+
+/* How it works: the plain-language explanation that has to come before any
+   of the drafting idiom, because a first-time visitor could not tell what
+   the site was. Three steps, numbered, no jargon. */
+.how { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: var(--stroke-thin) solid var(--ink); margin-bottom: calc(var(--grid-unit) * 4); }
+.howStep { padding: calc(var(--grid-unit) * 3); border-right: var(--stroke-thin) solid var(--ink); display: flex; flex-direction: column; gap: var(--grid-unit); }
+.howStep:last-child { border-right: 0; }
+.howStep .n { font-size: 40px; color: var(--mark); }
+.howStep h3 { font-size: 19px; line-height: 1.15; }
+.howStep p { color: var(--ink-2); font-size: 13px; line-height: 1.6; }
+
+/* One real record, shown early, so the thing itself is visible before any
+   explanation of how records are shaped. */
+.peek { border: var(--stroke-thin) solid var(--ink); margin-bottom: calc(var(--grid-unit) * 10); }
+.peekBar { display: flex; justify-content: space-between; align-items: baseline; gap: var(--grid-unit-2); padding: calc(var(--grid-unit) * 1.5) calc(var(--grid-unit) * 2); border-bottom: var(--stroke-thin) solid var(--ink); background: var(--paper-deep); }
+.peekBody { display: grid; grid-template-columns: 1fr 1fr; }
+/* Grid children default to min-width auto, so the code block would widen the
+   whole page on a phone. */
+.peekBody > * { padding: calc(var(--grid-unit) * 3); min-width: 0; }
+.how > *, .peek, .peekList > * { min-width: 0; }
+.peekBody > *:first-child { border-right: var(--stroke-thin) solid var(--ink); }
+.peek h3 { font-size: 24px; line-height: 1.1; }
+.peek .lede { margin-top: var(--grid-unit); font-size: 14px; line-height: 1.6; color: var(--ink); max-width: 46ch; }
+.peekList { margin-top: calc(var(--grid-unit) * 2); display: flex; flex-direction: column; gap: var(--grid-unit); }
+.peekList div { display: grid; grid-template-columns: 3ch 1fr; gap: var(--grid-unit); font-size: 13px; line-height: 1.5; }
+.peekList span { font-family: var(--font-chrome); font-size: 10px; color: var(--ink-3); padding-top: 3px; }
+.peekCode { background: var(--paper-deep); }
+.peekCode pre { margin: 0; max-width: 100%; font-family: var(--font-chrome); font-size: 11px; line-height: 1.65; color: var(--ink); white-space: pre; overflow: auto; max-height: 260px; }
+.peekMore { display: flex; align-items: center; gap: var(--grid-unit); padding: calc(var(--grid-unit) * 1.5) calc(var(--grid-unit) * 2); border-top: var(--stroke-thin) solid var(--ink); font-family: var(--font-chrome); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink); }
+.peekMore:hover { background: var(--mark-soft); color: var(--mark); }
+
+@media (max-width: 760px) {
+  .how { grid-template-columns: 1fr; }
+  .howStep { border-right: 0; border-bottom: var(--stroke-thin) solid var(--ink); }
+  .howStep:last-child { border-bottom: 0; }
+  .peekBody { grid-template-columns: 1fr; }
+  .peekBody > *:first-child { border-right: 0; border-bottom: var(--stroke-thin) solid var(--ink); }
+}
